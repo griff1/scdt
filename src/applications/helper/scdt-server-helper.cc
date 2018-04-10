@@ -24,10 +24,17 @@
 
 namespace ns3 {
 
-ScdtServerHelper::ScdtServerHelper (uint16_t port)
+ScdtServerHelper::ScdtServerHelper (Address address, uint16_t port)
 {
   m_factory.SetTypeId (ScdtServer::GetTypeId ());
-  SetAttribute ("Port", UintegerValue (port));
+  SetAttribute ("RemoteAddress", AddressValue (address));
+  SetAttribute ("RemotePort", UintegerValue (port));
+}
+
+ScdtServerHelper::ScdtServerHelper (Address address)
+{
+  m_factory.SetTypeId (ScdtServer::GetTypeId ());
+  SetAttribute ("RemoteAddress", AddressValue (address));
 }
 
 void 
@@ -36,6 +43,24 @@ ScdtServerHelper::SetAttribute (
   const AttributeValue &value)
 {
   m_factory.Set (name, value);
+}
+
+void
+ScdtServerHelper::SetFill (Ptr<Application> app, std::string fill)
+{
+  app->GetObject<ScdtServer>()->SetFill (fill);
+}
+
+void
+ScdtServerHelper::SetFill (Ptr<Application> app, uint8_t fill, uint32_t dataLength)
+{
+  app->GetObject<ScdtServer>()->SetFill (fill, dataLength);
+}
+
+void
+ScdtServerHelper::SetFill (Ptr<Application> app, uint8_t *fill, uint32_t fillLength, uint32_t dataLength)
+{
+  app->GetObject<ScdtServer>()->SetFill (fill, fillLength, dataLength);
 }
 
 ApplicationContainer
