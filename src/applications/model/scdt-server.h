@@ -25,6 +25,9 @@
 #include "ns3/ipv4-address.h"
 #include "ns3/traced-callback.h"
 
+#define MAX_FANOUT 4
+#define MAX_PINGS 100
+
 namespace ns3 {
 
 class Socket;
@@ -144,7 +147,7 @@ private:
    * \brief Schedule the next packet transmission
    * \param dt time interval between packets.
    */
-  void ScheduleTransmit (Time dt);
+  void ScheduleTransmit (Time dt, void* sendFunc);
   /**
    * \brief Send a packet
    */
@@ -159,6 +162,13 @@ private:
    */
   void HandleRead (Ptr<Socket> socket);
 
+  void UpdateChildren (Address addr, double pingTime);
+
+  void SerializeChildren ();
+
+  uint8_t* m_serializedChildren; 
+  uint32_t m_serializedChildrenSize;
+
   uint32_t m_count; //!< Maximum number of packets the application will send
   Time m_interval; //!< Packet inter-send time
   uint32_t m_size; //!< Size of the sent packet
@@ -172,6 +182,25 @@ private:
   uint16_t m_peerPort; //!< Remote peer port
   EventId m_sendEvent; //!< Event to send the next packet
 
+  // Multicast variables
+  Address m_rootIp; // Address of root node
+  uint16_t m_rootPort; // Port of root node (doesn't necessarily have to be true root)
+
+  Address m_parentIp; // Address of parent
+  uint16_t m_parentPort; // Port of parent
+
+  Address* m_children; // Address of child nodes
+  uint16_t* m_childrenPorts; // Ports of child nodes
+  double* m_shortestPing;
+  uint8_t m_numChildren;
+
+  bool m_isRoot; // True if node is root of tree; false otherwise
+
+  Address* m_pings; // Address of pinging host
+  double* m_pingStartTime; // Parallel array to 'pings'; start time of most recent ping
+  double* m_pingTime; // Parallel array to 'pings'; most recent ping time
+  uint32_t m_numPings; // Counter of number of hosts ping data has been stored for
+
   /// Callbacks for tracing the packet Tx events
   TracedCallback<Ptr<const Packet> > m_txTrace;
 };
@@ -179,3 +208,4 @@ private:
 } // namespace ns3
 
 #endif /* UDP_ECHO_CLIENT_H */
+
