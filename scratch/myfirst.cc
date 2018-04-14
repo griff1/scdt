@@ -51,13 +51,13 @@ main (int argc, char *argv[])
 
   Ipv4InterfaceContainer interfaces = address.Assign (devices);
 
-  UdpEchoServerHelper echoServer (9);
+  ScdtServerHelper rootServer (interfaces.GetAddress (1), 9, 1);
 
   ApplicationContainer serverApps = echoServer.Install (nodes.Get (1));
   serverApps.Start (Seconds (1.0));
   serverApps.Stop (Seconds (10.0));
 
-  ScdtServerHelper scdtServer (interfaces.GetAddress (1), 9);
+  ScdtServerHelper scdtServer (interfaces.GetAddress (1), 9, 0);
   scdtServer.SetAttribute ("MaxPackets", UintegerValue (1));
   scdtServer.SetAttribute ("Interval", TimeValue (Seconds (1.0)));
   scdtServer.SetAttribute ("PacketSize", UintegerValue (1024));

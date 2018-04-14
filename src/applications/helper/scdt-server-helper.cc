@@ -24,6 +24,14 @@
 
 namespace ns3 {
 
+ScdtServerHelper::ScdtServerHelper (Address address, uint16_t port, uint8_t isRoot)
+{
+  m_factory.SetTypeId (ScdtServer::GetTypeId ());
+  SetAttribute ("RemoteAddress", AddressValue (address));
+  SetAttribute ("RemotePort", UintegerValue (port));
+  SetAttribute ("IsRoot", UintegerValue (isRoot));
+}
+
 ScdtServerHelper::ScdtServerHelper (Address address, uint16_t port)
 {
   m_factory.SetTypeId (ScdtServer::GetTypeId ());

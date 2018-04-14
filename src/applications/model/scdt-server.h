@@ -52,8 +52,7 @@ public:
 
   virtual ~ScdtServer ();
 
-
-  void SetRemote(Address* ip, uint16_t* port, bool root)
+  void SetRemote(Address rootIp, uint16_t rootPort, bool isRoot);
   /**
    * \brief set the remote address and port
    * \param ip remote IP address
@@ -147,7 +146,7 @@ private:
    * \brief Schedule the next packet transmission
    * \param dt time interval between packets.
    */
-  void ScheduleTransmit (Time dt, void* sendFunc);
+  void ScheduleTransmit (Time dt);
   /**
    * \brief Send a packet
    */

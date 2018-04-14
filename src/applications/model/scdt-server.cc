@@ -67,6 +67,10 @@ ScdtServer::GetTypeId (void)
                    MakeUintegerAccessor (&ScdtServer::SetDataSize,
                                          &ScdtServer::GetDataSize),
                    MakeUintegerChecker<uint32_t> ())
+    .AddAttribute ("IsRoot", "Boolean if node is/is not root",
+                   UintegerValue (0),
+                   MakeUintegerAccessor (&ScdtServer::m_isRoot),
+                   MakeUintegerChecker<uint8_t> ())
     .AddTraceSource ("Tx", "A new packet is created and is sent",
                      MakeTraceSourceAccessor (&ScdtServer::m_txTrace),
                      "ns3::Packet::TracedCallback")
@@ -82,6 +86,22 @@ ScdtServer::ScdtServer ()
   m_sendEvent = EventId ();
   m_data = 0;
   m_dataSize = 0;
+
+  m_rootIp = m_peerAddress;
+  m_rootPort = m_peerPort;
+
+  m_children = new Address[MAX_FANOUT];
+  m_childrenPorts = new uint16_t[MAX_FANOUT];
+  m_shortestPing = new double[MAX_FANOUT];
+
+  m_pings = new Address[MAX_PINGS];
+  m_pingStartTime = new double[MAX_PINGS];
+  m_pingTime = new double[MAX_PINGS];
+  m_numPings = 0;
+  m_numChildren = 0;
+
+  m_serializedChildrenSize = 1;
+  m_serializedChildren = new uint8_t[1];
 }
 
 ScdtServer::~ScdtServer()
@@ -111,7 +131,7 @@ ScdtServer::SetRemote (Address rootIp, uint16_t rootPort, bool isRoot)
   m_children = new Address[MAX_FANOUT];
   m_childrenPorts = new uint16_t[MAX_FANOUT];
   m_shortestPing = new double[MAX_FANOUT];
-_
+
   m_isRoot = isRoot;
 
   m_pings = new Address[MAX_PINGS];
@@ -157,14 +177,18 @@ ScdtServer::StartApplication (void)
       m_socket = Socket::CreateSocket (GetNode (), tid);
       if (Ipv4Address::IsMatchingType(m_rootIp) == true)
         {
-          if (m_socket->Bind () == -1)
+          InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), m_rootPort);
+          if (m_socket->Bind (local) == -1) 
             {
               NS_FATAL_ERROR ("Failed to bind socket");
             }
-          InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), m_rootPort));
         }
       else
         {
+          if (Ipv6Address::IsMatchingType (m_rootIp) == true) 
+            {
+              NS_LOG_FUNCTION (this << "It's an Ipv6 addr!");
+            }
           NS_ASSERT_MSG (false, "Incompatible address type: " << m_rootIp);
         }
     }
@@ -383,15 +407,15 @@ ScdtServer::HandleRead (Ptr<Socket> socket)
   Address from;
   while ((packet = socket->RecvFrom (from)))
     {
-      int8_t contents[packet->GetSize ()];
-      packet->CopyData (contents, packet->GetSize ()]);
+      uint8_t contents[packet->GetSize ()];
+      packet->CopyData (contents, packet->GetSize ());
       
       uint8_t attach[] = "ATTACH\0";
       uint8_t ping[] = "PING\0"; 
       uint8_t pingResp[] = "PINGRESPONSE\0";
       uint8_t tryResp[] = "TRY";
       uint8_t attachSuc[] = "ATTACHSUCCESS\0";
-      if (memcmp (contents, attach, 7) 
+      if (memcmp (contents, attach, 7)) 
         {
           NS_LOG_LOGIC ("Sending ping...");
           
@@ -402,33 +426,33 @@ ScdtServer::HandleRead (Ptr<Socket> socket)
 
           m_numPings = m_numPings % MAX_PINGS;
         }
-      else if (memcmp (contents, ping, 5) 
+      else if (memcmp (contents, ping, 5)) 
         {
           NS_LOG_LOGIC ("Returning ping...");
 
           socket->SendTo (pingResp, 13, 0, from);
         }
-      else if (memcmp (contents, pingResp, 13) 
+      else if (memcmp (contents, pingResp, 13)) 
         {
           NS_LOG_LOGIC ("Received ping response");
           
-          for (int i = 0; i < numPings; i++) 
+          for (uint32_t i = 0; i < m_numPings; i++) 
             {
               if (memcmp (&m_pings[i], &from, sizeof (Address))) 
                 {
                   m_pingTime[i] = Simulator::Now ().GetSeconds () - m_pingStartTime[i];
-                  ScdtServer::UpdateChildren (m_pings[i], from);
+                  ScdtServer::UpdateChildren (m_pings[i], m_pingTime[i]);
                   break;
                 }
             }
         }
-      else if (memcmp (contents, tryResp, 3) 
+      else if (memcmp (contents, tryResp, 3))
         {
           // TODO
         }
       else if (memcmp (contents, attachSuc, 14)) 
         {
-          m_parent = from;
+          m_parentIp = from;
         }
       else 
         {
@@ -458,6 +482,7 @@ ScdtServer::HandleRead (Ptr<Socket> socket)
 void
 ScdtServer::UpdateChildren (Address addr, double pingTime) 
 {
+  // Add child because MAX_FANOUT not used yet
   uint8_t attachSuc[] = "ATTACHSUCCESS\0";
   if (m_numChildren < MAX_FANOUT) 
     {
@@ -469,6 +494,7 @@ ScdtServer::UpdateChildren (Address addr, double pingTime)
       return;
     }
 
+  // Update shortest ping if new ping is for existing child
   for (int i = 0; i < m_numChildren; i++) 
     {
       if (memcmp (&addr, &m_children[i], sizeof (Address))) 
@@ -481,13 +507,14 @@ ScdtServer::UpdateChildren (Address addr, double pingTime)
         }
     }
 
+  // Determine if other node has shorter ping and make it child
   double maxPingTime = 999999999;
   uint8_t maxPingIndex = 0;
   for (int i = 0; i < m_numChildren; i++) 
     {
       if (m_shortestPing[i] < maxPingTime) 
         {
-          maxPingtime = m_shortestPingTime;
+          maxPingTime = m_shortestPing[i];
           maxPingIndex = i;
         }
     }
@@ -513,17 +540,22 @@ ScdtServer::SerializeChildren ()
   m_serializedChildrenSize = m_numChildren + 4;
   for (int i = 0; i < m_numChildren; i++) 
     {
-      totalSize += m_children[i].GetSerializedSize();
+      m_serializedChildrenSize += m_children[i].GetSerializedSize();
     }
   delete [] m_serializedChildren;
   m_serializedChildren = new uint8_t[m_serializedChildrenSize];
-  m_serializedChildren[0] = {"T", "R", "Y", ":"};
+  m_serializedChildren[0] = 'T';
+  m_serializedChildren[1] = 'R';
+  m_serializedChildren[2] = 'Y';
+  m_serializedChildren[3] = ':';
   
   uint32_t curLoc = 4;
   for (int i = 0; i < m_numChildren; i++)
     {
-      uint32_t curSize = m_children[i].GetSerializedSize ());
-      TagBuffer curTagBuf (0, curSize);
+      uint32_t curSize = m_children[i].GetSerializedSize ();
+      uint8_t start = 0;
+      uint8_t end = 0;
+      TagBuffer curTagBuf (&start, &end);
       m_children[i].Serialize(curTagBuf);
 
       uint8_t curBuf[m_children[i].GetSerializedSize ()];
@@ -531,10 +563,10 @@ ScdtServer::SerializeChildren ()
 
       memcpy(&m_serializedChildren[curLoc], curBuf, curSize);
       curLoc += curSize;
-      m_serializedChildren[curLoc++] = ":";
+      m_serializedChildren[curLoc++] = ':';
     }
 
-  m_serializedChildren[m_serializedChildrenSize - 1] = "\0"
+  m_serializedChildren[m_serializedChildrenSize - 1] = '\0';
 }
 
 } // Namespace ns3

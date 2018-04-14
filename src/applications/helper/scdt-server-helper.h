@@ -36,6 +36,7 @@ namespace ns3 {
 class ScdtServerHelper
 {
 public:
+  ScdtServerHelper (Address ip, uint16_t port, uint8_t isRoot);
   /**
    * Create ScdtServerHelper which will make life easier for people trying
    * to set up simulations with echos. Use this variant with addresses that do
