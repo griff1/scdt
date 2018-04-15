@@ -466,7 +466,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address from, uint8_t* contents
           
       for (uint32_t i = 0; i < m_numPings; i++) 
         {
-          if (memcmp (&m_pings[i], &from, sizeof (Address)) == 0) 
+          if (m_pings[i] == from) 
             {
               // TODO: Convert to a priority queue?
               m_pingTime[i] = Simulator::Now ().GetSeconds () - m_pingStartTime[i];
@@ -500,7 +500,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address from, uint8_t* contents
       while (cntr < size) 
         {
           uint32_t childSize = contents[cntr];
-          Address curAddr ();
+          Address curAddr;
           curAddr.CopyAllFrom (&contents[cntr + 1], cntr);
           cntr += childSize + 3;
           m_possibleParents.insert (ScdtServer::SendPing (socket, from)); 
