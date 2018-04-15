@@ -53,7 +53,7 @@ main (int argc, char *argv[])
 
   ScdtServerHelper rootServer (interfaces.GetAddress (1), 9, 1);
 
-  ApplicationContainer serverApps = echoServer.Install (nodes.Get (1));
+  ApplicationContainer serverApps = rootServer.Install (nodes.Get (1));
   serverApps.Start (Seconds (1.0));
   serverApps.Stop (Seconds (10.0));
 
@@ -63,7 +63,7 @@ main (int argc, char *argv[])
   scdtServer.SetAttribute ("PacketSize", UintegerValue (1024));
 
   ApplicationContainer clientApps = scdtServer.Install (nodes.Get (0));
-  clientApps.Start (Seconds (2.0));
+  clientApps.Start (Seconds (1.0));
   clientApps.Stop (Seconds (10.0));
 
   Simulator::Run ();

@@ -24,6 +24,7 @@
 #include "ns3/ptr.h"
 #include "ns3/ipv4-address.h"
 #include "ns3/traced-callback.h"
+#include <unordered_set>
 
 #define MAX_FANOUT 4
 #define MAX_PINGS 100
@@ -32,6 +33,12 @@ namespace ns3 {
 
 class Socket;
 class Packet;
+  
+extern const uint8_t ATTACH[];
+extern const uint8_t PING[];
+extern const uint8_t PING_RESP[];  
+extern const uint8_t TRY_RESP[];
+extern const uint8_t ATTACH_SUC[];
 
 /**
  * \ingroup udpecho
@@ -65,6 +72,11 @@ public:
    */
   void SetRemote (Address addr);
 
+  uint32_t SendPing (Ptr<Socket> socket, Address dest);
+
+  void InterpretPacket (Ptr<Socket> socket, Address from, uint8_t* contents, uint32_t size);
+
+  void DoSetup (void);
   /**
    * Set the data size of the packet (the number of bytes that are sent as data
    * to the server).  The contents of the data are set to unspecified (don't
@@ -199,6 +211,10 @@ private:
   double* m_pingStartTime; // Parallel array to 'pings'; start time of most recent ping
   double* m_pingTime; // Parallel array to 'pings'; most recent ping time
   uint32_t m_numPings; // Counter of number of hosts ping data has been stored for
+  std::unordered_set <uint32_t> m_possibleParents; // Array indices of possible parents
+
+  Address m_nextPotentialParent;
+  uint32_t m_nextPotentialParentPing;
 
   /// Callbacks for tracing the packet Tx events
   TracedCallback<Ptr<const Packet> > m_txTrace;
