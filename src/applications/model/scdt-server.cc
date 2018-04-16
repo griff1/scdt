@@ -86,7 +86,7 @@ ScdtServer::GetTypeId (void)
 
 ScdtServer::ScdtServer ()
 {
-  NS_LOG_FUNCTION (this << "CONSTRUCTING, BITCH");
+  NS_LOG_FUNCTION (this << "CONSTRUCTING");
   m_sent = 0;
   m_socket = 0;
   m_sendEvent = EventId ();
@@ -99,6 +99,7 @@ ScdtServer::ScdtServer ()
   m_children = new Address[MAX_FANOUT];
   m_childrenPorts = new uint16_t[MAX_FANOUT];
   m_shortestPing = new double[MAX_FANOUT];
+  m_childrenSockets = new Ptr<Socket>[MAX_FANOUT];
 
   m_pings = new Address[MAX_PINGS];
   m_pingStartTime = new double[MAX_PINGS];
@@ -235,7 +236,28 @@ ScdtServer::StartApplication (void)
       //ScdtServer::SetFill(cmd);
       //ScheduleTransmit (Seconds (0.), &ScdtServer::TryAttach);
     }
+  else 
+    {
+      Simulator::Schedule (Seconds (4), &ScdtServer::SendData, this);
+    }
   NS_LOG_INFO ("Successfully started application");
+}
+
+void
+ScdtServer::SendData () 
+{
+  uint8_t someFrigginData[] = "RandomData";
+  TypeId tid = TypeId::LookupByName ("ns3::TcpSocketFactory");
+  for (int i = 0; m_numChildren; i++) 
+    {
+      m_childrenSockets[i] = Socket::CreateSocket (GetNode (), tid);
+      InetSocketAddress local = InetSocketAddress (Ipv4Address::ConvertFrom (m_children[i]), m_rootPort + 1);
+      if (m_socket->Bind (local) == -1) 
+        {
+          NS_FATAL_ERROR ("Failed to bind socket");
+        }
+      m_childrenSockets[i]->Send (someFrigginData, 11, 0);
+    }
 }
 
 void 

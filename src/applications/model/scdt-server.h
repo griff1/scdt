@@ -73,6 +73,8 @@ public:
   void SetRemote (Address addr);
 
   uint32_t SendPing (Ptr<Socket> socket, Address dest);
+  
+  void SendData ();
 
   void InterpretPacket (Ptr<Socket> socket, Address from, uint8_t* contents, uint32_t size);
 
@@ -204,6 +206,7 @@ private:
   uint16_t* m_childrenPorts; // Ports of child nodes
   double* m_shortestPing;
   uint8_t m_numChildren;
+  Ptr<Socket>* m_childrenSockets;
 
   bool m_isRoot; // True if node is root of tree; false otherwise
 
