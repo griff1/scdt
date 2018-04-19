@@ -28,6 +28,8 @@
 #include "ns3/uinteger.h"
 #include "ns3/trace-source-accessor.h"
 #include "scdt-server.h"
+#include "ns3/applications-module.h"
+#include "ns3/core-module.h"
 
 namespace ns3 {
 
@@ -246,17 +248,17 @@ ScdtServer::StartApplication (void)
 void
 ScdtServer::SendData () 
 {
-  uint8_t someFrigginData[] = "RandomData";
   TypeId tid = TypeId::LookupByName ("ns3::TcpSocketFactory");
+  OnOffHelper clientHelper ("ns3::TcpSocketFactory", Address ());
+  clientHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+  clientHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+  ApplicationContainer clientApps;
   for (int i = 0; m_numChildren; i++) 
     {
-      m_childrenSockets[i] = Socket::CreateSocket (GetNode (), tid);
-      InetSocketAddress local = InetSocketAddress (Ipv4Address::ConvertFrom (m_children[i]), m_rootPort + 1);
-      if (m_socket->Bind (local) == -1) 
-        {
-          NS_FATAL_ERROR ("Failed to bind socket");
-        }
-      m_childrenSockets[i]->Send (someFrigginData, 11, 0);
+        AddressValue remoteAddress (InetSocketAddress (Ipv4Address::ConvertFrom(m_children[i]), 500));
+        clientHelper.SetAttribute ("Remote", remoteAddress);
+        clientApps.Add (clientHelper.Install (GetNode()));
+
     }
 }
 
@@ -580,7 +582,9 @@ ScdtServer::UpdateChildren (Address addr, double pingTime)
   // Add child because MAX_FANOUT not used yet
   if (m_numChildren < MAX_FANOUT) 
     {
-      memcpy (&m_children[m_numChildren], &addr, sizeof (Address));
+      //memcpy (&m_children[m_numChildren], &addr, sizeof (Address));
+      Address a (addr);
+      m_children[m_numChildren] = a;
       m_shortestPing[m_numChildren] = pingTime;
       m_numChildren++;
       ScdtServer::SerializeChildren ();

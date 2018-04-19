@@ -34,7 +34,8 @@ main (int argc, char *argv[])
   LogComponentEnable ("ScdtServerApplication", LOG_LEVEL_INFO);
 
   NodeContainer nodes;
-  nodes.Create (2);
+  int numNodes = 2;
+  nodes.Create (numNodes);
 
   PointToPointHelper pointToPoint;
   pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
@@ -57,14 +58,21 @@ main (int argc, char *argv[])
   serverApps.Start (Seconds (1.0));
   serverApps.Stop (Seconds (10.0));
 
-  ScdtServerHelper scdtServer (interfaces.GetAddress (1), 9, 0);
-  scdtServer.SetAttribute ("MaxPackets", UintegerValue (1));
-  scdtServer.SetAttribute ("Interval", TimeValue (Seconds (1.0)));
-  scdtServer.SetAttribute ("PacketSize", UintegerValue (1024));
+  ScdtServerHelper treenodes (interfaces.GetAddress (1), 9, 0);
+  treenodes.SetAttribute ("MaxPackets", UintegerValue (1));
+  treenodes.SetAttribute ("Interval", TimeValue (Seconds (1.0)));
+  treenodes.SetAttribute ("PacketSize", UintegerValue (1024));
 
-  ApplicationContainer clientApps = scdtServer.Install (nodes.Get (0));
+  ApplicationContainer clientApps = treenodes.Install (nodes.Get (0));
+  
+  uint16_t port = 500;
+  Address sinkLocalAddress (InetSocketAddress (Ipv4Address::GetAny (), port));
+  PacketSinkHelper sinkHelper ("ns3::TcpSocketFactory", sinkLocalAddress);
+  clientApps.Add (sinkHelper.Install (nodes.Get(0)));
   clientApps.Start (Seconds (1.0));
   clientApps.Stop (Seconds (10.0));
+    
+  
 
   Simulator::Run ();
   Simulator::Destroy ();
