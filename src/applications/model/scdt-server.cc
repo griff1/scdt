@@ -253,9 +253,9 @@ ScdtServer::SendData ()
   clientHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
   clientHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
   ApplicationContainer clientApps;
-  for (int i = 0; m_numChildren; i++) 
+  for (int i = 0; i < m_numChildren; i++) 
     {
-        AddressValue remoteAddress (InetSocketAddress (Ipv4Address::ConvertFrom(m_children[i]), 500));
+        AddressValue remoteAddress (InetSocketAddress (InetSocketAddress::ConvertFrom (m_children[i]).GetIpv4 (), InetSocketAddress::ConvertFrom (m_children[i]).GetPort ()));
         clientHelper.SetAttribute ("Remote", remoteAddress);
         clientApps.Add (clientHelper.Install (GetNode()));
 
@@ -454,7 +454,7 @@ ScdtServer::Send (void)
 
 
 uint32_t
-ScdtServer::SendPing (Ptr<Socket> socket, Address dest) 
+ScdtServer::SendPing (Ptr<Socket> socket, Address & dest) 
 {
   NS_LOG_LOGIC ("Sending ping...");
   uint32_t curNumPings = m_numPings;      
@@ -470,7 +470,7 @@ ScdtServer::SendPing (Ptr<Socket> socket, Address dest)
 }
 
 void
-ScdtServer::InterpretPacket (Ptr<Socket> socket, Address from, uint8_t* contents, uint32_t size) 
+ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* contents, uint32_t size) 
 {
   // Handle attach request
   if (memcmp (contents, ATTACH, 7) == 0) 
@@ -582,9 +582,9 @@ ScdtServer::UpdateChildren (Address addr, double pingTime)
   // Add child because MAX_FANOUT not used yet
   if (m_numChildren < MAX_FANOUT) 
     {
-      //memcpy (&m_children[m_numChildren], &addr, sizeof (Address));
-      Address a (addr);
-      m_children[m_numChildren] = a;
+      memcpy (&m_children[m_numChildren], &addr, sizeof (Address));
+      //Address a (addr);
+      //m_children[m_numChildren] = a;
       m_shortestPing[m_numChildren] = pingTime;
       m_numChildren++;
       ScdtServer::SerializeChildren ();

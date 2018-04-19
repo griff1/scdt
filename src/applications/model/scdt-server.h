@@ -72,11 +72,11 @@ public:
    */
   void SetRemote (Address addr);
 
-  uint32_t SendPing (Ptr<Socket> socket, Address dest);
+  uint32_t SendPing (Ptr<Socket> socket, Address & dest);
   
   void SendData ();
 
-  void InterpretPacket (Ptr<Socket> socket, Address from, uint8_t* contents, uint32_t size);
+  void InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* contents, uint32_t size);
 
   void DoSetup (void);
   /**
