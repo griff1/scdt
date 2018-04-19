@@ -248,17 +248,20 @@ ScdtServer::StartApplication (void)
 void
 ScdtServer::SendData () 
 {
+  NS_LOG_INFO("Starting up TCP streams");
+  uint8_t someFrigginData[] = "RandomData";
   TypeId tid = TypeId::LookupByName ("ns3::TcpSocketFactory");
-  OnOffHelper clientHelper ("ns3::TcpSocketFactory", Address ());
-  clientHelper.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-  clientHelper.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
-  ApplicationContainer clientApps;
   for (int i = 0; i < m_numChildren; i++) 
     {
-        AddressValue remoteAddress (InetSocketAddress (InetSocketAddress::ConvertFrom (m_children[i]).GetIpv4 (), InetSocketAddress::ConvertFrom (m_children[i]).GetPort ()));
-        clientHelper.SetAttribute ("Remote", remoteAddress);
-        clientApps.Add (clientHelper.Install (GetNode()));
-
+        NS_LOG_INFO("OLA");
+        
+        m_childrenSockets[i] = Socket::CreateSocket (GetNode (), tid);
+        InetSocketAddress local =  InetSocketAddress (InetSocketAddress::ConvertFrom (m_children[i]).GetIpv4 (), 500);
+    if (m_socket->Bind (local) == -1) 
+                {
+                     NS_FATAL_ERROR ("Failed to bind socket");
+                   }
+          m_childrenSockets[i]->Send (someFrigginData, 11, 0);
     }
 }
 
