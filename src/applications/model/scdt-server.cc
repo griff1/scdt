@@ -257,7 +257,7 @@ ScdtServer::SendData ()
         
         m_childrenSockets[i] = Socket::CreateSocket (GetNode (), tid);
         InetSocketAddress local =  InetSocketAddress (InetSocketAddress::ConvertFrom (m_children[i]).GetIpv4 (), 500);
-    if (m_socket->Bind (local) == -1) 
+    if (m_childrenSockets[i]->Bind (local) == -1) 
                 {
                      NS_FATAL_ERROR ("Failed to bind socket");
                    }
