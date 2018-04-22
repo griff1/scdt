@@ -33,11 +33,12 @@
 
 namespace ns3 {
 
-const uint8_t ATTACH[] = "ATTACH\0";
-const uint8_t PING[] = "PING\0";
-const uint8_t PING_RESP[] = "PINGRESPONSE\0";
+const uint8_t ATTACH[] = "ATTACH";
+const uint8_t PING[] = "PING";
+const uint8_t PING_RESP[] = "PINGRESPONSE";
 const uint8_t TRY_RESP[] = "TRY";
-const uint8_t ATTACH_SUC[] = "ATTACHSUCCESS\0";
+const uint8_t ATTACH_SUC[] = "ATTACHSUCCESS";
+const uint8_t NACK[] = "NACK";
 
 NS_LOG_COMPONENT_DEFINE ("ScdtServerApplication");
 
@@ -191,6 +192,10 @@ ScdtServer::DoSetup (void)
   m_numPings = 0;
   m_numChildren = 0;
 
+  m_cache = new uint8_t[CACHE_SIZE];
+  m_cacheStarts = new uint32_t[CACHE_SIZE / BLOCK_SIZE];
+  m_cacheEnds = new uint32_t[CACHE_SIZE / BLOCK_SIZE];
+
   m_serializedChildrenSize = 1;
   m_serializedChildren = new uint8_t[1];
 
@@ -248,20 +253,20 @@ ScdtServer::StartApplication (void)
 void
 ScdtServer::SendData () 
 {
-  NS_LOG_INFO("Starting up TCP streams");
+  NS_LOG_INFO("Sending data");
+  uint32_t start = 0;
+  uint8_t* bin_string = (uint8_t *)&start;
   uint8_t someFrigginData[] = "RandomData";
-  TypeId tid = TypeId::LookupByName ("ns3::TcpSocketFactory");
+  uint32_t dataSize = 10;
+  NS_LOG_INFO ("bin_string: " << bin_string);
+  uint8_t toSend[dataSize + sizeof (start)];
+  memcpy (toSend, bin_string, sizeof (start));
+  memcpy (&toSend[sizeof (start)], someFrigginData, dataSize);
   for (int i = 0; i < m_numChildren; i++) 
     {
-        NS_LOG_INFO("OLA");
-        
-        m_childrenSockets[i] = Socket::CreateSocket (GetNode (), tid);
-        InetSocketAddress local =  InetSocketAddress (InetSocketAddress::ConvertFrom (m_children[i]).GetIpv4 (), 500);
-    if (m_childrenSockets[i]->Bind (local) == -1) 
-                {
-                     NS_FATAL_ERROR ("Failed to bind socket");
-                   }
-          m_childrenSockets[i]->Send (someFrigginData, 11, 0);
+      NS_LOG_INFO ("Sending: " << toSend);
+      ScdtServer::UpdateCache(toSend, 10 + sizeof (start));
+      m_socket->SendTo (toSend, 10 + sizeof (start), 0, m_children[i]);
     }
 }
 
@@ -538,14 +543,50 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
     {
       memcpy(&m_parentIp, &from, sizeof (Address));
     }
+  else if (memcmp (contents, NACK, 4) == 0) 
+    {
+      uint32_t start_byte;
+      memcpy (&start_byte, &contents[4], sizeof (start_byte));
+
+      // Round down to next largest block start
+      start_byte = start_byte & (~BLOCK_SIZE);
+      if (m_cacheStarts[start_byte / CACHE_SIZE] == start_byte) 
+        {
+          uint8_t resp[BLOCK_SIZE + sizeof (start_byte)];
+          uint8_t* binary_string = (uint8_t *)&start_byte;
+          memcpy (resp, binary_string, sizeof (start_byte));
+          memcpy (&resp[sizeof(start_byte)], &m_cache[start_byte], BLOCK_SIZE);
+          m_socket->SendTo (resp, BLOCK_SIZE + sizeof (start_byte), 0, from);
+        }
+      else 
+        {
+          m_socket->SendTo (contents, size, 0, m_parentIp);
+        }
+    }
   else 
     {
       // Forward packet to all children
       NS_LOG_INFO ("Received packet to forward with contents: " << contents);
       for (int i = 0; i < m_numChildren; i++) 
         {
+          ScdtServer::UpdateCache (contents, size);
           m_socket->SendTo(contents, size, 0, m_children[i]);
         }
+    }
+}
+
+void
+ScdtServer::UpdateCache (uint8_t* contents, uint32_t size) 
+{
+  uint32_t start_byte;
+  memcpy (&start_byte, &contents[sizeof (start_byte)], sizeof (start_byte));
+  
+  start_byte = start_byte & (~BLOCK_SIZE);
+  uint32_t num_blocks = size / BLOCK_SIZE;
+  memcpy (m_cache, &contents[sizeof (start_byte)], size - sizeof (start_byte));
+  for (uint8_t i = 0; i < num_blocks; i++) 
+    {
+      m_cacheStarts[(start_byte / BLOCK_SIZE) + i] = start_byte + (BLOCK_SIZE * i);
     }
 }
 

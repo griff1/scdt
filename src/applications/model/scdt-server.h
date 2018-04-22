@@ -28,6 +28,8 @@
 
 #define MAX_FANOUT 4
 #define MAX_PINGS 100
+#define CACHE_SIZE 1000
+#define BLOCK_SIZE 100
 
 namespace ns3 {
 
@@ -39,6 +41,7 @@ extern const uint8_t PING[];
 extern const uint8_t PING_RESP[];  
 extern const uint8_t TRY_RESP[];
 extern const uint8_t ATTACH_SUC[];
+extern const uint8_t NACK[];
 
 /**
  * \ingroup udpecho
@@ -179,8 +182,14 @@ private:
 
   void SerializeChildren ();
 
+  void UpdateCache (uint8_t* contents, uint32_t size);
+
   uint8_t* m_serializedChildren; 
   uint32_t m_serializedChildrenSize;
+
+  uint8_t* m_cache;
+  uint32_t* m_cacheStarts;
+  uint32_t* m_cacheEnds;
 
   uint32_t m_count; //!< Maximum number of packets the application will send
   Time m_interval; //!< Packet inter-send time
