@@ -68,13 +68,18 @@ main (int argc, char *argv[])
   uint16_t port = 500;
   Address sinkLocalAddress (InetSocketAddress (Ipv4Address::GetAny (), port));
   PacketSinkHelper sinkHelper ("ns3::TcpSocketFactory", sinkLocalAddress);
-  clientApps.Add (sinkHelper.Install (nodes.Get(0)));
+  ApplicationContainer tcpApp = sinkHelper.Install (nodes.Get(0));
+  std::cout << interfaces.GetAddress(0);
   clientApps.Start (Seconds (1.0));
   clientApps.Stop (Seconds (10.0));
+  tcpApp.Start (Seconds(1.0));
+  tcpApp.Stop (Seconds(10.0));
     
   
 
   Simulator::Run ();
   Simulator::Destroy ();
+  Ptr<PacketSink> sink1 = DynamicCast<PacketSink> (tcpApp.Get(0));
+  std::cout << "Total Bytes Received: " << sink1->GetTotalRx() << std::endl; 
   return 0;
 }
