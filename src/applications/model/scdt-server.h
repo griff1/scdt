@@ -221,6 +221,14 @@ private:
 
   /// Callbacks for tracing the packet Tx events
   TracedCallback<Ptr<const Packet> > m_txTrace;
+
+  void ConnectionSucceeded (Ptr<Socket> socket);
+
+  void ConnectionFailed (Ptr<Socket> socket);
+
+  void DataSend (Ptr<Socket> socket, uint32_t);
+
+  void SendTcp ();
 };
 
 } // namespace ns3
