@@ -26,10 +26,11 @@
 #include "ns3/traced-callback.h"
 #include <unordered_set>
 
-#define MAX_FANOUT 4
+#define MAX_FANOUT 1000
 #define MAX_PINGS 100
 #define CACHE_SIZE 1000
 #define BLOCK_SIZE 100
+#define MAX_STRETCH 2
 
 namespace ns3 {
 
@@ -42,6 +43,7 @@ extern const uint8_t PING_RESP[];
 extern const uint8_t TRY_RESP[];
 extern const uint8_t ATTACH_SUC[];
 extern const uint8_t NACK[];
+extern const uint8_t CHILDREN[];
 
 /**
  * \ingroup udpecho

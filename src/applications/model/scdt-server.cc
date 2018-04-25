@@ -39,6 +39,7 @@ const uint8_t PING_RESP[] = "PINGRESPONSE";
 const uint8_t TRY_RESP[] = "TRY";
 const uint8_t ATTACH_SUC[] = "ATTACHSUCCESS";
 const uint8_t NACK[] = "NACK";
+const uint8_t CHILDREN[] = "CHILDREN";
 
 NS_LOG_COMPONENT_DEFINE ("ScdtServerApplication");
 
@@ -238,7 +239,8 @@ ScdtServer::StartApplication (void)
       m_parentIp = m_rootIp;
       m_parentPort = m_rootPort;
 
-      m_socket->SendTo (ATTACH, 7, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort));
+      m_socket->SendTo (CHILDREN, 8, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort));
+      m_socket->SendTo (PING, 5, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort)); 
       //std::string cmd ("ATTACH");
       //ScdtServer::SetFill(cmd);
       //ScheduleTransmit (Seconds (0.), &ScdtServer::TryAttach);
