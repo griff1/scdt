@@ -30,6 +30,7 @@
 #include "scdt-server.h"
 #include "ns3/applications-module.h"
 #include "ns3/core-module.h"
+#include "ns3/tcp-socket-factory.h"
 
 namespace ns3 {
 
@@ -249,52 +250,54 @@ void
 ScdtServer::SendData () 
 {
   NS_LOG_INFO("Starting up TCP streams");
-  TypeId tid = TypeId::LookupByName ("ns3::TcpSocketFactory");
+  TypeId tid = TcpSocketFactory::GetTypeId ();
   for (int i = 0; i < m_numChildren; i++) 
     {
     if (!m_childrenSockets[i])
-    {
- m_childrenSockets[i] = Socket::CreateSocket (GetNode (), tid);
-        InetSocketAddress local =  InetSocketAddress (InetSocketAddress::ConvertFrom (m_children[i]).GetIpv4 (), 500);
+      {
+        m_childrenSockets[i] = Socket::CreateSocket (GetNode (), tid);
+        InetSocketAddress local =  InetSocketAddress (InetSocketAddress::ConvertFrom (m_children[i]).GetIpv4 (), 5000);
 
       // Fatal error if socket type is not NS3_SOCK_STREAM or NS3_SOCK_SEQPACKET
-      if (m_childrenSockets[i]->GetSocketType () != Socket::NS3_SOCK_STREAM &&
+        if (m_childrenSockets[i]->GetSocketType () != Socket::NS3_SOCK_STREAM &&
           m_childrenSockets[i]->GetSocketType () != Socket::NS3_SOCK_SEQPACKET)
-        {
-          NS_FATAL_ERROR ("Using BulkSend with an incompatible socket type. "
-                          "BulkSend requires SOCK_STREAM or SOCK_SEQPACKET. "
-                          "In other words, use TCP instead of UDP.");
-        }
+          {
+            NS_FATAL_ERROR ("Using BulkSend with an incompatible socket type. "
+                            "BulkSend requires SOCK_STREAM or SOCK_SEQPACKET. "
+                            "In other words, use TCP instead of UDP.");
+          }
 
-      if (Inet6SocketAddress::IsMatchingType (m_children[i]))
-        {
-          std::cout << "NOT GOOD";
-          if (m_childrenSockets[i]->Bind6 () == -1)
-            {
-              NS_FATAL_ERROR ("Failed to bind socket");
-            }
-        }
-      else if (InetSocketAddress::IsMatchingType (m_children[i]))
-        {
-          if (m_childrenSockets[i]->Bind (local) == -1)
-            {
-              NS_FATAL_ERROR ("Failed to bind socket");
-            }
-        }
+        if (Inet6SocketAddress::IsMatchingType (m_children[i]))
+          {
+            std::cout << "NOT GOOD\n";
+            if (m_childrenSockets[i]->Bind6 () == -1)
+              {
+                NS_FATAL_ERROR ("Failed to bind socket");
+              }
+          }
+        else if (InetSocketAddress::IsMatchingType (m_children[i]))
+          {
+            if (m_childrenSockets[i]->Bind (local) == -1)
+              {
+                NS_FATAL_ERROR ("Failed to bind socket");
+              }
+          }
 
-      m_childrenSockets[i]->Connect (m_children[i]);
-      m_childrenSockets[i]->ShutdownRecv ();
-      m_childrenSockets[i]->SetConnectCallback (
-        MakeCallback (&ScdtServer::ConnectionSucceeded, this),
-        MakeCallback (&ScdtServer::ConnectionFailed, this));
-      m_childrenSockets[i]->SetSendCallback (
-        MakeCallback (&ScdtServer::DataSend, this));
+        if (m_childrenSockets[i]->Connect (m_children[i]) == -1) 
+          {
+            NS_FATAL_ERROR ("Failed to connect to child");
+          }
+
+        m_childrenSockets[i]->ShutdownRecv ();
+        m_childrenSockets[i]->SetConnectCallback (
+          MakeCallback (&ScdtServer::ConnectionSucceeded, this),
+          MakeCallback (&ScdtServer::ConnectionFailed, this));
+        m_childrenSockets[i]->SetSendCallback (
+          MakeCallback (&ScdtServer::DataSend, this));
+      }
+      std::cout << "Got here\n";
+      ScdtServer::SendTcp();
     }
-    std::cout << "Got here";
-    SendTcp();
-}
-
-
 }
 
 void 
@@ -698,19 +701,20 @@ ScdtServer::SerializeChildren ()
 
   m_serializedChildren[m_serializedChildrenSize - 1] = '\0';
 }
+
 void
-ScdtServer::SendTcp() {
-uint8_t someFrigginData[] = "RandomData";
-  std::cout << "connection succeeded";
-Ptr<Packet> p = Create<Packet> (someFrigginData, 11);
-          int actual = m_childrenSockets[0]->Send (p);
-          NS_LOG_INFO("Bytes sent" << actual);
+ScdtServer::SendTcp() 
+{
+  uint8_t someFrigginData[] = "RandomData";
+  Ptr<Packet> p = Create<Packet> (someFrigginData, 11);
+  int actual = m_childrenSockets[0]->Send (p);
+  NS_LOG_INFO("Bytes sent: " << actual);
 }
 
 void ScdtServer::ConnectionSucceeded (Ptr<Socket> socket)
 {
-  SendTcp();
-  
+  NS_LOG_INFO ("Connection succeeded");
+  ScdtServer::SendTcp(); 
 }
 
 void ScdtServer::ConnectionFailed (Ptr<Socket> socket)
