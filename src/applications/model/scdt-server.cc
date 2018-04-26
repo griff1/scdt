@@ -34,11 +34,11 @@
 
 namespace ns3 {
 
-const uint8_t ATTACH[] = "ATTACH\0";
-const uint8_t PING[] = "PING\0";
-const uint8_t PING_RESP[] = "PINGRESPONSE\0";
+const uint8_t ATTACH[] = "ATTACH";
+const uint8_t PING[] = "PING";
+const uint8_t PING_RESP[] = "PINGRESPONSE";
 const uint8_t TRY_RESP[] = "TRY";
-const uint8_t ATTACH_SUC[] = "ATTACHSUCCESS\0";
+const uint8_t ATTACH_SUC[] = "ATTACHSUCCESS";
 
 NS_LOG_COMPONENT_DEFINE ("ScdtServerApplication");
 
@@ -305,6 +305,16 @@ ScdtServer::StopApplication ()
 {
   NS_LOG_FUNCTION (this);
 
+  //InetSocketAddress thisNode = InetSocketAddress::ConvertFrom (GetNode ());
+
+  //NS_LOG_INFO ("Children of " << thisNode.GetIpv4 () << ": ");
+  NS_LOG_INFO ("Node " << GetNode ()->GetId () << ":");
+  for (int i = 0; i < m_numChildren; i++) 
+    {
+      InetSocketAddress curChild = InetSocketAddress::ConvertFrom (m_children[i]);
+      NS_LOG_INFO ("-- " << curChild.GetIpv4 ());
+    }
+
   if (m_socket != 0) 
     {
       m_socket->Close ();
@@ -557,15 +567,14 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
   // Handle addresses of additional attach points to try
   else if (memcmp (contents, TRY_RESP, 3) == 0)
     {
-      // uint8_t numEntries = contents[3];
-      uint32_t cntr = 6;
+      uint32_t cntr = 4;
       while (cntr < size) 
         {
-          uint32_t childSize = contents[cntr];
+          uint32_t childSize = contents[cntr+1];
           Address curAddr;
-          curAddr.CopyAllFrom (&contents[cntr + 1], cntr);
-          cntr += childSize + 3;
-          m_possibleParents.insert (ScdtServer::SendPing (socket, from)); 
+          curAddr.CopyAllFrom (&contents[cntr], childSize + 2);
+          cntr += childSize + 2;
+          m_possibleParents.insert (ScdtServer::SendPing (socket, curAddr)); 
         }
     }
   // Set our parent now that we've successfully attached
@@ -595,7 +604,7 @@ ScdtServer::HandleRead (Ptr<Socket> socket)
       uint8_t contents[packet->GetSize ()];
       packet->CopyData (contents, packet->GetSize ());
       
-      NS_LOG_INFO ("Received packet with contents " << contents);
+      NS_LOG_INFO ("Received packet on node " << GetNode ()->GetId () << " with contents " << contents);
     
       ScdtServer::InterpretPacket (socket, from, contents, packet->GetSize ()); 
    
@@ -611,6 +620,7 @@ ScdtServer::HandleRead (Ptr<Socket> socket)
                        Inet6SocketAddress::ConvertFrom (from).GetIpv6 () << " port " <<
                        Inet6SocketAddress::ConvertFrom (from).GetPort ());
         }
+      NS_LOG_INFO ("\n\n");
     }
 }
 
@@ -661,8 +671,8 @@ ScdtServer::UpdateChildren (Address addr, double pingTime)
       memcpy (&m_children[maxPingIndex], &addr, sizeof (Address));
       m_shortestPing[maxPingIndex] = pingTime;
 
-      m_socket->SendTo (m_serializedChildren, m_serializedChildrenSize, 0, oldAddr);
       m_socket->SendTo (ATTACH_SUC, 14, 0, addr);
+      ScdtServer::SerializeChildren ();
     }
   else 
     {
@@ -673,7 +683,7 @@ ScdtServer::UpdateChildren (Address addr, double pingTime)
 void
 ScdtServer::SerializeChildren () 
 {
-  m_serializedChildrenSize = m_numChildren + 5;
+  m_serializedChildrenSize = 4;
   for (int i = 0; i < m_numChildren; i++) 
     {
       m_serializedChildrenSize += m_children[i].GetSerializedSize();
@@ -683,10 +693,9 @@ ScdtServer::SerializeChildren ()
   m_serializedChildren[0] = 'T';
   m_serializedChildren[1] = 'R';
   m_serializedChildren[2] = 'Y';
-  m_serializedChildren[3] = m_serializedChildrenSize;
-  m_serializedChildren[4] = ':';
+  m_serializedChildren[3] = m_numChildren;
   
-  uint32_t curLoc = 5;
+  uint32_t curLoc = 4;
   for (int i = 0; i < m_numChildren; i++)
     {
       uint32_t curSize = m_children[i].GetSerializedSize ();
@@ -696,10 +705,7 @@ ScdtServer::SerializeChildren ()
 
       memcpy(&m_serializedChildren[curLoc], curBuf, curSize);
       curLoc += curSize;
-      m_serializedChildren[curLoc++] = ':';
     }
-
-  m_serializedChildren[m_serializedChildrenSize - 1] = '\0';
 }
 
 void

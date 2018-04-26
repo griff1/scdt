@@ -36,7 +36,7 @@ main (int argc, char *argv[])
 
   NodeContainer root;
   root.Create(1);
-  int numNodes = 2;
+  int numNodes = 5;
   InternetStackHelper stack;
   stack.Install (root);
 
