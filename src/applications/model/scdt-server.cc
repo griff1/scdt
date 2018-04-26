@@ -241,7 +241,7 @@ ScdtServer::StartApplication (void)
     }
   else 
     {
-      Simulator::Schedule (Seconds (4), &ScdtServer::SendData, this);
+      //Simulator::Schedule (Seconds (4), &ScdtServer::SendData, this);
     }
   NS_LOG_INFO ("Successfully started application");
 }
@@ -567,6 +567,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
   // Handle addresses of additional attach points to try
   else if (memcmp (contents, TRY_RESP, 3) == 0)
     {
+      NS_LOG_INFO(this << "\nhandling Try");
       uint32_t cntr = 4;
       while (cntr < size) 
         {
@@ -574,6 +575,9 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
           Address curAddr;
           curAddr.CopyAllFrom (&contents[cntr], childSize + 2);
           cntr += childSize + 2;
+          InetSocketAddress curChild = InetSocketAddress::ConvertFrom (curAddr);
+      NS_LOG_INFO ("possible parent -- " << curChild.GetIpv4 ());
+
           m_possibleParents.insert (ScdtServer::SendPing (socket, curAddr)); 
         }
     }

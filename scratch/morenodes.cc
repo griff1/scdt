@@ -51,12 +51,15 @@ main (int argc, char *argv[])
 
   
  Ipv4InterfaceContainer interface; 
+ NodeContainer allNodes;
+ allNodes = NodeContainer(root.Get(0));
   for (int i = 0; i < numNodes; i++) {
     NodeContainer treenode;
     treenode.Create(1);
     stack.Install(treenode);
     NetDeviceContainer device;
     NodeContainer combined = NodeContainer(root.Get(0), treenode.Get(0));
+    allNodes.Add(treenode.Get(0));
     
     device = pointToPoint.Install (combined);
     char temp[15];     
@@ -73,6 +76,10 @@ main (int argc, char *argv[])
     clientApps.Start (Seconds (1.0));
     clientApps.Stop (Seconds (10.0));
   }
+  // tried to do this, but didn't work
+  NodeContainer temp = NodeContainer(allNodes.Get(5), allNodes.Get(1));
+  NetDeviceContainer t = pointToPoint.Install(temp);
+
   ScdtServerHelper rootServer (interface.GetAddress (0), 9, 1);
 
   ApplicationContainer serverApps = rootServer.Install (root.Get (0));
