@@ -19,7 +19,9 @@
 #include "ns3/internet-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/applications-module.h"
-#include<stdio.h>
+#include <stdio.h>
+
+#define NUM_NODES 5
 
 using namespace ns3;
 
@@ -34,11 +36,13 @@ main (int argc, char *argv[])
   Time::SetResolution (Time::NS);
   LogComponentEnable ("ScdtServerApplication", LOG_LEVEL_INFO);
 
-  NodeContainer root;
-  root.Create(1);
-  int numNodes = 5;
+  NodeContainer c;
+  c.Create(NUM_NODES);
+
   InternetStackHelper stack;
-  stack.Install (root);
+  stack.Install (c);
+
+  NodeContainer root = NodeContainer(c.Get(1));
 
   PointToPointHelper pointToPoint;
   pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
@@ -49,11 +53,10 @@ main (int argc, char *argv[])
   address.SetBase ("10.1.0.0", "255.255.0.0");
 
 
-  
- Ipv4InterfaceContainer interface; 
- NodeContainer allNodes;
- allNodes = NodeContainer(root.Get(0));
-  for (int i = 0; i < numNodes; i++) {
+  Ipv4InterfaceContainer interface; 
+  NodeContainer allNodes;
+  allNodes = NodeContainer(root.Get(0));
+  for (int i = 0; i < NUM_NODES; i++) {
     NodeContainer treenode;
     treenode.Create(1);
     stack.Install(treenode);

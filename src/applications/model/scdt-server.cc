@@ -504,7 +504,7 @@ ScdtServer::Send (void)
 uint32_t
 ScdtServer::SendPing (Ptr<Socket> socket, Address & dest) 
 {
-  NS_LOG_LOGIC ("Sending ping...");
+  NS_LOG_INFO ("Sending ping...");
   uint32_t curNumPings = m_numPings;      
 
   memcpy (&m_pings[m_numPings], &dest, sizeof (Address));
@@ -528,7 +528,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
   // Handle ping request by sending a ping response
   else if (memcmp (contents, PING, 5) == 0) 
     {
-      NS_LOG_LOGIC ("Returning ping...");
+      NS_LOG_INFO ("Returning ping...");
       socket->SendTo (PING_RESP, 13, 0, from);
     }
   // Handle response to initiated ping
@@ -576,9 +576,9 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
           curAddr.CopyAllFrom (&contents[cntr], childSize + 2);
           cntr += childSize + 2;
           InetSocketAddress curChild = InetSocketAddress::ConvertFrom (curAddr);
-      NS_LOG_INFO ("possible parent -- " << curChild.GetIpv4 ());
+          NS_LOG_INFO ("possible parent -- " << curChild.GetIpv4 ());
 
-          m_possibleParents.insert (ScdtServer::SendPing (socket, curAddr)); 
+          m_possibleParents.insert (ScdtServer::SendPing (m_socket, curAddr)); 
         }
     }
   // Set our parent now that we've successfully attached
@@ -629,7 +629,7 @@ ScdtServer::HandleRead (Ptr<Socket> socket)
 }
 
 void
-ScdtServer::UpdateChildren (Address addr, double pingTime) 
+ScdtServer::UpdateChildren (Address & addr, double pingTime) 
 {
   // Add child because MAX_FANOUT not used yet
   if (m_numChildren < MAX_FANOUT) 

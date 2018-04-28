@@ -175,7 +175,7 @@ private:
    */
   void HandleRead (Ptr<Socket> socket);
 
-  void UpdateChildren (Address addr, double pingTime);
+  void UpdateChildren (Address & addr, double pingTime);
 
   void SerializeChildren ();
 
