@@ -48,7 +48,7 @@ main (int argc, char *argv[])
   stack.Install (nodes);
 
   Ipv4AddressHelper address;
-  address.SetBase ("10.1.1.0", "255.255.255.0");
+  address.SetBase ("10.1.0.0", "255.255.0.0");
 
   Ipv4InterfaceContainer interfaces = address.Assign (devices);
 
@@ -65,7 +65,7 @@ main (int argc, char *argv[])
 
   ApplicationContainer clientApps = treenodes.Install (nodes.Get (0));
   
-  uint16_t port = 5000;
+  uint16_t port = 500;
   Address sinkLocalAddress (InetSocketAddress (Ipv4Address::GetAny (), port));
   PacketSinkHelper sinkHelper ("ns3::TcpSocketFactory", sinkLocalAddress);
   ApplicationContainer tcpApp = sinkHelper.Install (nodes.Get(0));
@@ -75,7 +75,7 @@ main (int argc, char *argv[])
   tcpApp.Start (Seconds(1.0));
   tcpApp.Stop (Seconds(10.0));
     
-  
+  Ipv4GlobalRoutingHelper::PopulateRoutingTables (); 
 
   Simulator::Run ();
   Simulator::Destroy ();

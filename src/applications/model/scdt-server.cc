@@ -31,6 +31,8 @@
 #include "ns3/applications-module.h"
 #include "ns3/core-module.h"
 #include "ns3/tcp-socket-factory.h"
+#include "ns3/network-module.h"
+#include "ns3/ipv4.h"
 
 namespace ns3 {
 
@@ -241,7 +243,7 @@ ScdtServer::StartApplication (void)
     }
   else 
     {
-      //Simulator::Schedule (Seconds (4), &ScdtServer::SendData, this);
+      Simulator::Schedule (Seconds (4), &ScdtServer::SendData, this);
     }
   NS_LOG_INFO ("Successfully started application");
 }
@@ -309,8 +311,10 @@ ScdtServer::StopApplication ()
 
   //NS_LOG_INFO ("Children of " << thisNode.GetIpv4 () << ": ");
   NS_LOG_INFO ("Node " << GetNode ()->GetId () << ":");
+  NS_LOG_INFO("curAddress " << GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal());
   for (int i = 0; i < m_numChildren; i++) 
     {
+
       InetSocketAddress curChild = InetSocketAddress::ConvertFrom (m_children[i]);
       NS_LOG_INFO ("-- " << curChild.GetIpv4 ());
     }

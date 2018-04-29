@@ -21,7 +21,7 @@
 #include "ns3/applications-module.h"
 #include <stdio.h>
 
-#define NUM_NODES 5
+#define NUM_NODES 10 
 
 using namespace ns3;
 
@@ -42,11 +42,9 @@ main (int argc, char *argv[])
   InternetStackHelper stack;
   stack.Install (c);
 
-  NodeContainer root = NodeContainer(c.Get(1));
+  NodeContainer root = NodeContainer(c.Get(0));
 
   PointToPointHelper pointToPoint;
-  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
-  pointToPoint.SetChannelAttribute ("Delay", StringValue ("2ms"));
 
   
   Ipv4AddressHelper address;
@@ -54,19 +52,22 @@ main (int argc, char *argv[])
 
 
   Ipv4InterfaceContainer interface; 
-  NodeContainer allNodes;
-  allNodes = NodeContainer(root.Get(0));
-  for (int i = 0; i < NUM_NODES; i++) {
+  //NodeContainer allNodes;
+  //allNodes = NodeContainer(root.Get(0));
+  for (int i = 1; i < NUM_NODES; i++) {
     NodeContainer treenode;
-    treenode.Create(1);
-    stack.Install(treenode);
+    treenode.Add(c.Get(i));
     NetDeviceContainer device;
     NodeContainer combined = NodeContainer(root.Get(0), treenode.Get(0));
-    allNodes.Add(treenode.Get(0));
-    
+    //allNodes.Add(treenode.Get(0));
+  
+    pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
+    char delay[4];
+    sprintf(delay, "%dms", rand() % 10 +1);
+    pointToPoint.SetChannelAttribute ("Delay", StringValue (delay));
     device = pointToPoint.Install (combined);
     char temp[15];     
-    sprintf(temp, "10.1.%d.0", i+1);
+    sprintf(temp, "10.1.%d.0", i);
     address.SetBase(temp, "255.255.255.0");
     interface = address.Assign(device); 
     ScdtServerHelper treenodes (interface.GetAddress (0), 9, 0);
@@ -79,9 +80,10 @@ main (int argc, char *argv[])
     clientApps.Start (Seconds (1.0));
     clientApps.Stop (Seconds (10.0));
   }
+  Ipv4GlobalRoutingHelper::PopulateRoutingTables();
   // tried to do this, but didn't work
-  NodeContainer temp = NodeContainer(allNodes.Get(5), allNodes.Get(1));
-  NetDeviceContainer t = pointToPoint.Install(temp);
+  //NodeContainer temp = NodeContainer(allNodes.Get(5), allNodes.Get(1));
+  //NetDeviceContainer t = pointToPoint.Install(temp);
 
   ScdtServerHelper rootServer (interface.GetAddress (0), 9, 1);
 
