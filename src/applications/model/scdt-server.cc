@@ -546,23 +546,44 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
             {
               // TODO: Convert to a priority queue?
               m_pingTime[i] = Simulator::Now ().GetSeconds () - m_pingStartTime[i];
-              if (m_possibleParents.count (i) != 0) 
+              if (m_possibleParentsSet.count (i) != 0) 
                 {
-                  m_possibleParents.erase (i);
-                  if (m_pingTime[i] < m_nextPotentialParentPing) 
-                    {
-                      memcpy (&m_nextPotentialParent, &m_pings[i], sizeof (Address));
-                      m_nextPotentialParentPing = m_pingTime[i];
-                    } 
-                  if (m_possibleParents.size () == 0) 
-                    {
-                      m_nextPotentialParentPing = 9999999;
-                      socket->SendTo (ATTACH, 7, 0, m_nextPotentialParent); 
-                    }
+                  m_possibleParentsCntr--;
+                  m_possibleParentsSet.erase (i);
                 }
               else 
                 {
                   ScdtServer::UpdateChildren (m_pings[i], m_pingTime[i]);
+                  break;
+                }
+              if (m_possibleParentsCntr == 0) 
+                {
+                  int32_t curBestIndex = -1;
+                  std::stack <uint32_t> discardedParents;
+                  while (m_possibleParentsStk.size() != 0) 
+                    {
+                      uint32_t curIndex = m_possibleParentsStk.top();
+                      m_possibleParentsStk.pop();
+                      NS_LOG_INFO ("PING TIME: " << m_pingTime[curIndex]);
+
+                      if (m_pingTime[curIndex] < m_nextPotentialParentPing) 
+                        {
+                          if (curBestIndex != -1) 
+                            {
+                              discardedParents.push(curBestIndex);
+                            }
+                          curBestIndex = curIndex;
+                          memcpy (&m_nextPotentialParent, &m_pings[curIndex], sizeof (Address));
+                          m_nextPotentialParentPing = m_pingTime[curIndex];
+                        } 
+                    }
+                  while (discardedParents.size () != 0) 
+                    {
+                      m_possibleParentsStk.push (discardedParents.top());
+                      discardedParents.pop();
+                    }
+                  m_nextPotentialParentPing = 9999999;
+                  socket->SendTo (ATTACH, 7, 0, m_nextPotentialParent); 
                 }
               break;
             }
@@ -573,6 +594,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
     {
       NS_LOG_INFO(this << "\nhandling Try");
       uint32_t cntr = 4;
+      m_possibleParentsCntr = contents[3];
       while (cntr < size) 
         {
           uint32_t childSize = contents[cntr+1];
@@ -582,7 +604,9 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
           InetSocketAddress curChild = InetSocketAddress::ConvertFrom (curAddr);
           NS_LOG_INFO ("possible parent -- " << curChild.GetIpv4 ());
 
-          m_possibleParents.insert (ScdtServer::SendPing (m_socket, curAddr)); 
+          uint32_t index = ScdtServer::SendPing (m_socket, curAddr);
+          m_possibleParentsStk.push (index); 
+          m_possibleParentsSet.insert (index);
         }
     }
   // Set our parent now that we've successfully attached

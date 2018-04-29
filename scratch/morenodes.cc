@@ -20,6 +20,7 @@
 #include "ns3/point-to-point-module.h"
 #include "ns3/applications-module.h"
 #include <stdio.h>
+#include <time.h>
 
 #define NUM_NODES 10 
 
@@ -30,6 +31,7 @@ NS_LOG_COMPONENT_DEFINE ("FirstScriptExample");
 int
 main (int argc, char *argv[])
 {
+  srand (time (NULL));
   CommandLine cmd;
   cmd.Parse (argc, argv);
   
@@ -44,9 +46,6 @@ main (int argc, char *argv[])
 
   NodeContainer root = NodeContainer(c.Get(0));
 
-  PointToPointHelper pointToPoint;
-
-  
   Ipv4AddressHelper address;
   address.SetBase ("10.1.0.0", "255.255.0.0");
 
@@ -60,11 +59,16 @@ main (int argc, char *argv[])
     NetDeviceContainer device;
     NodeContainer combined = NodeContainer(root.Get(0), treenode.Get(0));
     //allNodes.Add(treenode.Get(0));
-  
-    pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
+    
+    PointToPointHelper pointToPoint;
+    char dataRate[4];
+    sprintf(dataRate, "%dMbps", rand() % 100 + 1);
+    pointToPoint.SetDeviceAttribute ("DataRate", StringValue (dataRate));
     char delay[4];
-    sprintf(delay, "%dms", rand() % 10 +1);
+    sprintf(delay, "%dms", rand() % 100 + 1);
     pointToPoint.SetChannelAttribute ("Delay", StringValue (delay));
+
+
     device = pointToPoint.Install (combined);
     char temp[15];     
     sprintf(temp, "10.1.%d.0", i);
