@@ -25,6 +25,7 @@
 #include "ns3/ipv4-address.h"
 #include "ns3/traced-callback.h"
 #include <unordered_set>
+#include <stack>
 
 #define MAX_FANOUT 1000
 #define MAX_PINGS 100
