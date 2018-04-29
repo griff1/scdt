@@ -190,8 +190,11 @@ ScdtServer::DoSetup (void)
   m_pings = new Address[MAX_PINGS];
   m_pingStartTime = new double[MAX_PINGS];
   m_pingTime = new double[MAX_PINGS];
+  m_stretch = new float[MAX_PINGS];
   m_numPings = 0;
   m_numChildren = 0;
+  m_rootPing = 0;
+  m_roundNodeCount = 0;
 
   m_cache = new uint8_t[CACHE_SIZE];
   m_cacheStarts = new uint32_t[CACHE_SIZE / BLOCK_SIZE];
@@ -471,7 +474,8 @@ ScdtServer::SendPing (Ptr<Socket> socket, Address & dest)
 
   memcpy (&m_pings[m_numPings], &dest, sizeof (Address));
   m_pingStartTime[m_numPings] = Simulator::Now ().GetSeconds ();
-  m_pingTime[m_numPings++] = 99999999;
+  m_pingTime[m_numPings] = 99999999;
+  m_pingToRoot[m_numPings++] = 0;
   socket->SendTo (PING, 5, 0, dest);
 
   m_numPings = m_numPings % MAX_PINGS;
@@ -485,13 +489,23 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
   // Handle attach request
   if (memcmp (contents, ATTACH, 7) == 0) 
     {
-      ScdtServer::SendPing (socket, from);
+      //ScdtServer::SendPing (socket, from);
+      memcpy (&m_children[m_numChildren++], &from, sizeof (Address));
     }
   // Handle ping request by sending a ping response
   else if (memcmp (contents, PING, 5) == 0) 
     {
       NS_LOG_LOGIC ("Returning ping...");
-      socket->SendTo (PING_RESP, 13, 0, from);
+      uint8_t returnBuf[17];
+      memcpy (returnBuf, PING_RESP, 13);
+      memcpy (returnBuf, &m_rootPing, sizeof (uint32_t)); 
+      socket->SendTo (returnBuf, 17, 0, from);
+    }
+  else if (memcmp (contents, CHILDREN, 8) == 0) 
+    {
+      NS_LOG_LOGIC ("Returning children...");
+      ScdtServer::SerializeChildren ();
+      m_socket->SendTo (m_serializedChildren, m_serializedChildrenSize, 0, oldAddr); 
     }
   // Handle response to initiated ping
   else if (memcmp (contents, PING_RESP, 13) == 0) 
@@ -504,7 +518,20 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
             {
               // TODO: Convert to a priority queue?
               m_pingTime[i] = Simulator::Now ().GetSeconds () - m_pingStartTime[i];
-              if (m_possibleParents.count (i) != 0) 
+              m_roundNodeCount--;
+              if (from == m_rootIp) 
+                {
+                  m_rootPing = m_pingTime[i];
+                  m_stretch[i] = 1;
+                }
+              else 
+                {
+                  uint32_t pingToRoot;
+                  memcpy (&pingToRoot, &contents[13], sizeof(pingToRoot));
+                  m_stretch[i] = ((float) m_pingTime[i] + (float) pingToRoot) / m_rootPing;
+                }
+              
+              /*if (m_possibleParents.count (i) != 0) 
                 {
                   m_possibleParents.erase (i);
                   if (m_pingTime[i] < m_nextPotentialParentPing) 
@@ -521,8 +548,28 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
               else 
                 {
                   ScdtServer::UpdateChildren (m_pings[i], m_pingTime[i]);
-                }
+                }*/
               break;
+            }
+        }
+      if (m_roundNodeCount == 0 && from != m_rootIp) 
+        {
+          Address bestAddr;
+          float bestStretch = 999;
+          while (m_possibleParents.size() != 0) 
+            {
+              uint32_t curParent = m_possibleParents.pop ();
+              if (m_stretch[curParent] < bestStretch && m_stretch[curParent] < MAX_STRETCH) 
+                {
+                  bestStretch = m_stretch[curParent];
+                  memcpy (&bestAddr, &m_pings[curParent], sizeof (Address));
+                }
+            }
+          if (bestStretch != 999) 
+            {
+              memcpy (&m_parentIp, &bestAddr, sizeof (Address));
+              
+              m_socket->SendTo (CHILDREN, 8, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_parentIp), m_rootPort));
             }
         }
     }
@@ -531,13 +578,15 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
     {
       // uint8_t numEntries = contents[3];
       uint32_t cntr = 6;
+      m_roundNodeCount = 0;
       while (cntr < size) 
         {
           uint32_t childSize = contents[cntr];
           Address curAddr;
           curAddr.CopyAllFrom (&contents[cntr + 1], cntr);
           cntr += childSize + 3;
-          m_possibleParents.insert (ScdtServer::SendPing (socket, from)); 
+          m_possibleParents.push (ScdtServer::SendPing (socket, from)); 
+          m_roundNodeCount++;
         }
     }
   // Set our parent now that we've successfully attached

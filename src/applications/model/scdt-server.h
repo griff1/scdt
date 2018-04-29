@@ -225,10 +225,13 @@ private:
   double* m_pingStartTime; // Parallel array to 'pings'; start time of most recent ping
   double* m_pingTime; // Parallel array to 'pings'; most recent ping time
   uint32_t m_numPings; // Counter of number of hosts ping data has been stored for
-  std::unordered_set <uint32_t> m_possibleParents; // Array indices of possible parents
+  std::stack <uint32_t> m_possibleParents; // Array indices of possible parents
+  float* m_stretch;
+  uint32_t m_rootPing;
 
   Address m_nextPotentialParent;
   uint32_t m_nextPotentialParentPing;
+  uint8_t m_roundNodeCount;
 
   /// Callbacks for tracing the packet Tx events
   TracedCallback<Ptr<const Packet> > m_txTrace;
