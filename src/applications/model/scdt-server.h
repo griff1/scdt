@@ -24,7 +24,8 @@
 #include "ns3/ptr.h"
 #include "ns3/ipv4-address.h"
 #include "ns3/traced-callback.h"
-#include <unordered_set>
+#include <set>
+#include <stack>
 
 #define MAX_FANOUT 4
 #define MAX_PINGS 100
@@ -178,7 +179,7 @@ private:
    */
   void HandleRead (Ptr<Socket> socket);
 
-  void UpdateChildren (Address addr, double pingTime);
+  void UpdateChildren (Address & addr, double pingTime);
 
   void SerializeChildren ();
 
@@ -223,10 +224,12 @@ private:
   double* m_pingStartTime; // Parallel array to 'pings'; start time of most recent ping
   double* m_pingTime; // Parallel array to 'pings'; most recent ping time
   uint32_t m_numPings; // Counter of number of hosts ping data has been stored for
-  std::unordered_set <uint32_t> m_possibleParents; // Array indices of possible parents
+  std::stack <uint32_t> m_possibleParentsStk; // Array indices of possible parents
+  std::set <uint32_t> m_possibleParentsSet;
 
   Address m_nextPotentialParent;
-  uint32_t m_nextPotentialParentPing;
+  double m_nextPotentialParentPing;
+  uint8_t m_possibleParentsCntr;
 
   /// Callbacks for tracing the packet Tx events
   TracedCallback<Ptr<const Packet> > m_txTrace;
