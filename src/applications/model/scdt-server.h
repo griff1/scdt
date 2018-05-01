@@ -30,7 +30,7 @@
 #define MAX_FANOUT 4
 #define MAX_PINGS 100
 #define CACHE_SIZE 1000
-#define BLOCK_SIZE 100
+#define BLOCK_SIZE 10
 
 namespace ns3 {
 
@@ -185,11 +185,13 @@ private:
 
   void UpdateCache (uint8_t* contents, uint32_t size);
 
+  void ChangeConfig ();
+
   uint8_t* m_serializedChildren; 
   uint32_t m_serializedChildrenSize;
 
   uint8_t* m_cache;
-  uint32_t* m_cacheStarts;
+  int64_t* m_cacheStarts;
   uint32_t* m_cacheEnds;
 
   uint32_t m_count; //!< Maximum number of packets the application will send

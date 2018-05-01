@@ -195,7 +195,8 @@ ScdtServer::DoSetup (void)
   m_numChildren = 0;
 
   m_cache = new uint8_t[CACHE_SIZE];
-  m_cacheStarts = new uint32_t[CACHE_SIZE / BLOCK_SIZE];
+  m_cacheStarts = new int64_t[CACHE_SIZE / BLOCK_SIZE];
+  memset (m_cacheStarts, -1, CACHE_SIZE / BLOCK_SIZE);
   m_cacheEnds = new uint32_t[CACHE_SIZE / BLOCK_SIZE];
 
   m_serializedChildrenSize = 1;
@@ -208,6 +209,7 @@ void
 ScdtServer::StartApplication (void)
 {
   NS_LOG_FUNCTION (this);
+  srand (time (NULL));
   if (m_socket == 0)
     {
       TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
@@ -247,9 +249,16 @@ ScdtServer::StartApplication (void)
     }
   else 
     {
+      //Simulator::Schedule (Seconds (3.5), &ScdtServer::ChangeConfig, this);
       Simulator::Schedule (Seconds (4), &ScdtServer::SendData, this);
     }
   NS_LOG_INFO ("Successfully started application");
+}
+
+void
+ScdtServer::ChangeConfig () 
+{
+  //Config::SetDefault ("ns3::RateErrorModel::ErrorRate", DoubleValue (0.5));
 }
 
 void
@@ -264,11 +273,22 @@ ScdtServer::SendData ()
   uint8_t toSend[dataSize + sizeof (start)];
   memcpy (toSend, bin_string, sizeof (start));
   memcpy (&toSend[sizeof (start)], someFrigginData, dataSize);
+
+  uint8_t toSend2[dataSize + sizeof (start)];
+  uint8_t someOtherFrigginData[] = "OtherData1";
+  uint32_t start2 = 10;
+  uint8_t* bin_string2 = (uint8_t *)&start2;
+  memcpy (toSend2, bin_string2, sizeof (start));
+  memcpy (&toSend2[sizeof (start)], someOtherFrigginData, dataSize);
   for (int i = 0; i < m_numChildren; i++) 
     {
       NS_LOG_INFO ("Sending: " << toSend);
       ScdtServer::UpdateCache(toSend, 10 + sizeof (start));
       m_socket->SendTo (toSend, 10 + sizeof (start), 0, m_children[i]);
+
+      ScdtServer::UpdateCache (toSend2, 10 + sizeof (start));
+      
+      m_socket->SendTo (toSend2, 10 + sizeof (start), 0, m_children[i]);
     }
 }
 
@@ -276,6 +296,17 @@ void
 ScdtServer::StopApplication ()
 {
   NS_LOG_FUNCTION (this);
+  NS_LOG_INFO ("Node " << GetNode ()->GetId () << ":");
+  NS_LOG_INFO ("curAddress " << GetNode ()->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ());
+
+  NS_LOG_INFO ("Caches: " << m_cache);
+  NS_LOG_INFO ("Cache starts: " << m_cacheStarts);
+
+  for (int i = 0; i < m_numChildren; i++) 
+    {
+      InetSocketAddress curChild = InetSocketAddress::ConvertFrom (m_children[i]);
+      NS_LOG_INFO ("-- " << curChild.GetIpv4 ());
+    }
 
   if (m_socket != 0) 
     {
@@ -598,11 +629,18 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
     {
       // Forward packet to all children
       NS_LOG_INFO ("Received packet to forward with contents: " << contents);
-      ScdtServer::UpdateCache (contents, size);
-      for (int i = 0; i < m_numChildren; i++) 
+      /*if (rand () % 100 == 0) 
         {
-          m_socket->SendTo(contents, size, 0, m_children[i]);
+          NS_LOG_INFO ("Simulated packet drop");
         }
+      else 
+        {*/
+          ScdtServer::UpdateCache (contents, size);
+          for (int i = 0; i < m_numChildren; i++) 
+            {
+              m_socket->SendTo(contents, size, 0, m_children[i]);
+            }
+        //}
     }
 }
 
@@ -612,8 +650,8 @@ ScdtServer::UpdateCache (uint8_t* contents, uint32_t size)
   uint32_t start_byte;
   memcpy (&start_byte, contents, sizeof (start_byte));
   
-  start_byte = start_byte & (~BLOCK_SIZE);
-  uint32_t num_blocks = size / BLOCK_SIZE;
+  start_byte = start_byte - (start_byte % BLOCK_SIZE);
+  uint32_t num_blocks = (size - sizeof (start_byte)) / BLOCK_SIZE + 1;
   memcpy (&m_cache[start_byte], &contents[sizeof (start_byte)], size - sizeof (start_byte));
   for (uint8_t i = 0; i < num_blocks; i++) 
     {
@@ -633,9 +671,9 @@ ScdtServer::HandleRead (Ptr<Socket> socket)
     {
       uint8_t contents[packet->GetSize ()];
       packet->CopyData (contents, packet->GetSize ());
-      
+     
       NS_LOG_INFO ("Received packet on node " << GetNode ()->GetId () << " with contents " << contents);
-    
+      NS_LOG_INFO ("IP: " << GetNode ()->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ()); 
       ScdtServer::InterpretPacket (socket, from, contents, packet->GetSize ()); 
    
       if (InetSocketAddress::IsMatchingType (from))
