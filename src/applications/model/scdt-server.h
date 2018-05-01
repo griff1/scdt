@@ -223,12 +223,14 @@ private:
   bool m_isRoot; // True if node is root of tree; false otherwise
 
   Address* m_pings; // Address of pinging host
+  double* m_pingToRoot;
   double* m_pingStartTime; // Parallel array to 'pings'; start time of most recent ping
   double* m_pingTime; // Parallel array to 'pings'; most recent ping time
   uint32_t m_numPings; // Counter of number of hosts ping data has been stored for
-  std::stack <uint32_t> m_possibleParents; // Array indices of possible parents
-  float* m_stretch;
-  uint32_t m_rootPing;
+  std::stack <uint32_t> m_possibleParentsStk; // Array indices of possible parents
+  std::set <uint32_t> m_possibleParentsSet;
+  double* m_stretch;
+  double m_rootPing;
 
   Address m_nextPotentialParent;
   uint32_t m_nextPotentialParentPing;
