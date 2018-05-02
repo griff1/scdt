@@ -32,7 +32,7 @@
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/ipv4.h"
-
+#include <unistd.h>
 
 namespace ns3 {
 
@@ -246,8 +246,9 @@ ScdtServer::StartApplication (void)
       m_parentIp = m_rootIp;
       m_parentPort = m_rootPort;
 
-      m_socket->SendTo (CHILDREN, 8, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort));
       ScdtServer::SendPing (m_socket, m_rootIp);
+      usleep (250000);
+      m_socket->SendTo (CHILDREN, 8, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort));
       //m_socket->SendTo (PING, 5, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort)); 
     }
   else 
@@ -486,7 +487,16 @@ ScdtServer::SendPing (Ptr<Socket> socket, Address & dest)
   m_pingStartTime[m_numPings] = Simulator::Now ().GetSeconds ();
   m_pingTime[m_numPings] = 99999999;
   m_pingToRoot[m_numPings++] = 0;
-  socket->SendTo (PING, 5, 0, dest);
+
+  // Correct for issue with m_rootIp
+  if (dest == m_rootIp) 
+    {
+      socket->SendTo (PING, 5, 0,  InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort));
+    }
+  else
+    {
+      socket->SendTo (PING, 5, 0, dest);
+    }
 
   m_numPings = m_numPings % MAX_PINGS;
 
@@ -506,7 +516,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
   else if (memcmp (contents, PING, 5) == 0) 
     {
       NS_LOG_LOGIC ("Returning ping...");
-      uint8_t returnBuf[12 + sizeof (double)];
+      uint8_t returnBuf[12 + sizeof (double) + 1];
       memcpy (returnBuf, PING_RESP, 12);
       memcpy (&returnBuf[12], &m_rootPing, sizeof (double)); 
       socket->SendTo (returnBuf, 16, 0, from);
@@ -529,7 +539,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
               // TODO: Convert to a priority queue?
               m_pingTime[i] = Simulator::Now ().GetSeconds () - m_pingStartTime[i];
               m_roundNodeCount--;
-              if (from == m_rootIp) 
+              if (m_pings[i] == m_rootIp) 
                 {
                   m_rootPing = m_pingTime[i];
                   m_stretch[i] = 1;
