@@ -202,6 +202,7 @@ private:
 
   Address m_parentIp; // Address of parent
   uint16_t m_parentPort; // Port of parent
+  Ptr<Socket> m_parentSocket;
 
   Address* m_children; // Address of child nodes
   uint16_t* m_childrenPorts; // Ports of child nodes
@@ -230,7 +231,13 @@ private:
 
   void DataSend (Ptr<Socket> socket, uint32_t);
 
-  void SendTcp ();
+  void SendTcp (Ptr<Socket> socket);
+
+  void SetTcpReceiveSocket();
+
+  void HandleAccept (Ptr<Socket> socket, const Address& from);
+
+  void HandleTcpRead(Ptr<Socket> socket);
 };
 
 } // namespace ns3

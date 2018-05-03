@@ -41,6 +41,7 @@ const uint8_t PING[] = "PING";
 const uint8_t PING_RESP[] = "PINGRESPONSE";
 const uint8_t TRY_RESP[] = "TRY";
 const uint8_t ATTACH_SUC[] = "ATTACHSUCCESS";
+bool m_connected = false;
 
 NS_LOG_COMPONENT_DEFINE ("ScdtServerApplication");
 
@@ -235,7 +236,8 @@ ScdtServer::StartApplication (void)
     {
       m_parentIp = m_rootIp;
       m_parentPort = m_rootPort;
-
+     
+      //Simulator::Schedule(Seconds(3.5), &ScdtServer::SetTcpReceiveSocket, this);
       m_socket->SendTo (ATTACH, 7, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort));
       //std::string cmd ("ATTACH");
       //ScdtServer::SetFill(cmd);
@@ -243,9 +245,37 @@ ScdtServer::StartApplication (void)
     }
   else 
     {
-      Simulator::Schedule (Seconds (4), &ScdtServer::SendData, this);
+      Simulator::Schedule (Seconds (8), &ScdtServer::SendData, this);
     }
   NS_LOG_INFO ("Successfully started application");
+}
+
+void
+ScdtServer::SetTcpReceiveSocket() {
+      TypeId tid = TcpSocketFactory::GetTypeId ();
+      std::cout << "setting up tcp receive socket";
+      InetSocketAddress local =  InetSocketAddress (InetSocketAddress::ConvertFrom (m_parentIp).GetIpv4 (), 500);
+      NS_LOG_INFO("parent ip address: " << InetSocketAddress::ConvertFrom(m_parentIp).GetIpv4());
+      m_parentSocket = Socket::CreateSocket (GetNode(), tid);
+      if (m_parentSocket->Bind (local) == -1) {
+          NS_FATAL_ERROR ("Failed to bind socket to parent");
+      }
+      m_parentSocket->Listen();
+      m_parentSocket->ShutdownSend();
+      m_parentSocket->SetRecvCallback(MakeCallback (&ScdtServer::HandleTcpRead, this));
+      m_parentSocket->SetAcceptCallback(MakeNullCallback<bool, Ptr<Socket>, const Address &> (), MakeCallback (&ScdtServer::HandleAccept, this));
+}
+
+void
+ScdtServer::HandleAccept(Ptr<Socket> s, const Address& from) {
+    std::cout << "IN HANDLE ACCEPT";
+    s->SetRecvCallback (MakeCallback (&ScdtServer::HandleTcpRead, this));
+}
+
+void
+ScdtServer::HandleTcpRead(Ptr<Socket> socket)
+{
+    std::cout << "Handling read";
 }
 
 void
@@ -258,8 +288,9 @@ ScdtServer::SendData ()
     if (!m_childrenSockets[i])
       {
         m_childrenSockets[i] = Socket::CreateSocket (GetNode (), tid);
-        InetSocketAddress local =  InetSocketAddress (InetSocketAddress::ConvertFrom (m_children[i]).GetIpv4 (), 5000);
+        InetSocketAddress local =  InetSocketAddress (InetSocketAddress::ConvertFrom (m_children[i]).GetIpv4 (), 500);
 
+        NS_LOG_INFO("Sending data to child: " << InetSocketAddress::ConvertFrom(m_children[i]).GetIpv4());
       // Fatal error if socket type is not NS3_SOCK_STREAM or NS3_SOCK_SEQPACKET
         if (m_childrenSockets[i]->GetSocketType () != Socket::NS3_SOCK_STREAM &&
           m_childrenSockets[i]->GetSocketType () != Socket::NS3_SOCK_SEQPACKET)
@@ -285,20 +316,23 @@ ScdtServer::SendData ()
               }
           }
 
-        if (m_childrenSockets[i]->Connect (m_children[i]) == -1) 
-          {
-            NS_FATAL_ERROR ("Failed to connect to child");
-          }
-
         m_childrenSockets[i]->ShutdownRecv ();
         m_childrenSockets[i]->SetConnectCallback (
           MakeCallback (&ScdtServer::ConnectionSucceeded, this),
           MakeCallback (&ScdtServer::ConnectionFailed, this));
         m_childrenSockets[i]->SetSendCallback (
           MakeCallback (&ScdtServer::DataSend, this));
-      }
-      std::cout << "Got here\n";
-      ScdtServer::SendTcp();
+      int ret = m_childrenSockets[i]->Connect (m_children[i]);
+        std::cout << ret;
+}
+     std::cout << "Got here\n";
+      NS_LOG_INFO (GetNode()->GetId());
+      uint8_t someFrigginData[] = "RandomData";
+      Ptr<Packet> p = Create<Packet> (someFrigginData, 11);
+      int actual = m_childrenSockets[i]->Send (p);
+      NS_LOG_INFO("Bytes sent: " << actual);
+
+      //ScdtServer::SendTcp();
     }
 }
 
@@ -310,8 +344,9 @@ ScdtServer::StopApplication ()
   //InetSocketAddress thisNode = InetSocketAddress::ConvertFrom (GetNode ());
 
   //NS_LOG_INFO ("Children of " << thisNode.GetIpv4 () << ": ");
-  NS_LOG_INFO ("Node " << GetNode ()->GetId () << ":");
-  NS_LOG_INFO("curAddress " << GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal());
+  NS_LOG_INFO ("Node " << GetNode ()->GetId () << ": curAddress: " << GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal());
+  
+      //NS_LOG_INFO("parent ip address: " << InetSocketAddress::ConvertFrom(m_parentIp).GetIpv4());
   for (int i = 0; i < m_numChildren; i++) 
     {
 
@@ -613,6 +648,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
   else if (memcmp (contents, ATTACH_SUC, 14) == 0) 
     {
       memcpy(&m_parentIp, &from, sizeof (Address));
+      ScdtServer::SetTcpReceiveSocket();
     }
   else 
     {
@@ -741,18 +777,18 @@ ScdtServer::SerializeChildren ()
 }
 
 void
-ScdtServer::SendTcp() 
+ScdtServer::SendTcp(Ptr<Socket> socket) 
 {
   uint8_t someFrigginData[] = "RandomData";
   Ptr<Packet> p = Create<Packet> (someFrigginData, 11);
-  int actual = m_childrenSockets[0]->Send (p);
+  int actual = socket->Send (p);
   NS_LOG_INFO("Bytes sent: " << actual);
 }
 
 void ScdtServer::ConnectionSucceeded (Ptr<Socket> socket)
 {
   NS_LOG_INFO ("Connection succeeded");
-  ScdtServer::SendTcp(); 
+  ScdtServer::SendTcp(socket); 
 }
 
 void ScdtServer::ConnectionFailed (Ptr<Socket> socket)

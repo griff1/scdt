@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#define NUM_NODES 10 
+#define NUM_NODES 2 
 
 using namespace ns3;
 
@@ -80,6 +80,15 @@ main (int argc, char *argv[])
     treenodes.SetAttribute ("PacketSize", UintegerValue (1024));
 
     ApplicationContainer clientApps = treenodes.Install (treenode.Get(0));
+    
+    /*uint16_t port = 500;
+    Address sinkLocalAddress (InetSocketAddress (Ipv4Address::GetAny(), port));
+    PacketSinkHelper sinkHelper ("ns3::TcpSocketFactory", sinkLocalAddress);
+    //clientApps.Add(sinkHelper.Install (treenode.Get(0)));
+    ApplicationContainer tcpApp = sinkHelper.Install (treenode.Get(0));
+    tcpApp.Start (Seconds (1.0));
+    tcpApp.Stop (Seconds (10.0));*/
+
   
     clientApps.Start (Seconds (1.0));
     clientApps.Stop (Seconds (10.0));
