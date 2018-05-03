@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#define NUM_NODES 2 
+#define NUM_NODES 6 
 
 using namespace ns3;
 

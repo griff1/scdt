@@ -253,9 +253,7 @@ ScdtServer::StartApplication (void)
 void
 ScdtServer::SetTcpReceiveSocket() {
       TypeId tid = TcpSocketFactory::GetTypeId ();
-      std::cout << "setting up tcp receive socket";
       InetSocketAddress local =  InetSocketAddress (Ipv4Address::GetAny (), 500);
-      NS_LOG_INFO("parent ip address: " << InetSocketAddress::ConvertFrom(m_parentIp).GetIpv4());
       m_parentSocket = Socket::CreateSocket (GetNode(), tid);
       if (m_parentSocket->Bind (local) == -1) {
           NS_FATAL_ERROR ("Failed to bind socket to parent");
@@ -268,14 +266,20 @@ ScdtServer::SetTcpReceiveSocket() {
 
 void
 ScdtServer::HandleAccept(Ptr<Socket> s, const Address& from) {
-    std::cout << "IN HANDLE ACCEPT";
     s->SetRecvCallback (MakeCallback (&ScdtServer::HandleTcpRead, this));
 }
 
 void
 ScdtServer::HandleTcpRead(Ptr<Socket> socket)
 {
-    std::cout << "Handling read";
+    //std::cout << "Handling read";
+    Address from;
+    if (m_numChildren == 0) {
+        Ptr<Packet> packet = socket->RecvFrom(from);
+        NS_LOG_INFO("At time " << Simulator::Now ().GetSeconds() << "s node " << GetNode()->GetId() << " received " << packet->GetSize() << " bytes from " << InetSocketAddress::ConvertFrom(from).GetIpv4());
+        return;
+    }
+    ScdtServer::SendData();
 }
 
 void
@@ -322,16 +326,14 @@ ScdtServer::SendData ()
           MakeCallback (&ScdtServer::ConnectionFailed, this));
         m_childrenSockets[i]->SetSendCallback (
           MakeCallback (&ScdtServer::DataSend, this));
-      int ret = m_childrenSockets[i]->Connect (InetSocketAddress(InetSocketAddress::ConvertFrom(m_children[i]).GetIpv4 (), 500));
-        std::cout << ret;
+        m_childrenSockets[i]->Connect (InetSocketAddress(InetSocketAddress::ConvertFrom(m_children[i]).GetIpv4 (), 500));
 }
-     std::cout << "Got here\n";
-      NS_LOG_INFO (GetNode()->GetId());
+      /*NS_LOG_INFO (GetNode()->GetId());
       uint8_t someFrigginData[] = "RandomData";
       Ptr<Packet> p = Create<Packet> (someFrigginData, 11);
       int actual = m_childrenSockets[i]->Send (p);
       NS_LOG_INFO("Bytes sent: " << actual);
-
+*/
       //ScdtServer::SendTcp();
     }
 }
@@ -798,7 +800,7 @@ void ScdtServer::ConnectionFailed (Ptr<Socket> socket)
 
 void ScdtServer::DataSend (Ptr<Socket> socket, uint32_t)
 {
-    std::cout << "Data send";
+    //std::cout << "Data send";
     
 }
 
