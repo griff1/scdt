@@ -269,28 +269,26 @@ ScdtServer::SendData ()
 {
   NS_LOG_INFO("Sending data");
   uint32_t start = 0;
-  uint8_t* bin_string = (uint8_t *)&start;
   uint8_t someFrigginData[] = "RandomData";
   uint32_t dataSize = 10;
-  NS_LOG_INFO ("bin_string: " << bin_string);
   uint8_t toSend[dataSize + sizeof (start)];
-  memcpy (toSend, bin_string, sizeof (start));
+  memcpy (toSend, &start, sizeof (start));
   memcpy (&toSend[sizeof (start)], someFrigginData, dataSize);
 
   uint8_t toSend2[dataSize + sizeof (start)];
   uint8_t someOtherFrigginData[] = "OtherData1";
   uint32_t start2 = 10;
   memcpy (toSend2, &start2, sizeof (start2));
-  memcpy (&toSend2[sizeof (start)], someOtherFrigginData, dataSize);
+  memcpy (&toSend2[sizeof (start2)], someOtherFrigginData, dataSize);
 
+  ScdtServer::UpdateCache (toSend, 10 + sizeof (start));
+  ScdtServer::UpdateCache (toSend2, 10 + sizeof (start2));  
   for (int i = 0; i < m_numChildren; i++) 
     {
       NS_LOG_INFO ("Sending: " << toSend);
-      ScdtServer::UpdateCache(toSend, 10 + sizeof (start));
       m_socket->SendTo (toSend, 10 + sizeof (start), 0, m_children[i]);
       
-      ScdtServer::UpdateCache (toSend2, 10 + sizeof (start));
-      m_socket->SendTo (toSend2, 10 + sizeof (start), 0, m_children[i]);
+      m_socket->SendTo (toSend2, 10 + sizeof (start2), 0, m_children[i]);
     }
 }
 
