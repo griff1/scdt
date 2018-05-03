@@ -201,7 +201,11 @@ ScdtServer::DoSetup (void)
   m_roundNodeCount = 0;
 
   m_cache = new uint8_t[CACHE_SIZE];
-  m_cacheStarts = new uint32_t[CACHE_SIZE / BLOCK_SIZE];
+  m_cacheStarts = new int64_t[CACHE_SIZE / BLOCK_SIZE];
+  for (int i = 0; i < CACHE_SIZE / BLOCK_SIZE; i++) 
+    {
+      m_cacheStarts[i] = -1;
+    }
   m_cacheEnds = new uint32_t[CACHE_SIZE / BLOCK_SIZE];
 
   m_serializedChildrenSize = 1;
@@ -214,6 +218,8 @@ void
 ScdtServer::StartApplication (void)
 {
   NS_LOG_FUNCTION (this);
+  srand (time (NULL));
+
   if (m_socket == 0)
     {
       TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
@@ -270,11 +276,21 @@ ScdtServer::SendData ()
   uint8_t toSend[dataSize + sizeof (start)];
   memcpy (toSend, bin_string, sizeof (start));
   memcpy (&toSend[sizeof (start)], someFrigginData, dataSize);
+
+  uint8_t toSend2[dataSize + sizeof (start)];
+  uint8_t someOtherFrigginData[] = "OtherData1";
+  uint32_t start2 = 10;
+  memcpy (toSend2, &start2, sizeof (start2));
+  memcpy (&toSend2[sizeof (start)], someOtherFrigginData, dataSize);
+
   for (int i = 0; i < m_numChildren; i++) 
     {
       NS_LOG_INFO ("Sending: " << toSend);
       ScdtServer::UpdateCache(toSend, 10 + sizeof (start));
       m_socket->SendTo (toSend, 10 + sizeof (start), 0, m_children[i]);
+      
+      ScdtServer::UpdateCache (toSend2, 10 + sizeof (start));
+      m_socket->SendTo (toSend2, 10 + sizeof (start), 0, m_children[i]);
     }
 }
 
@@ -285,6 +301,9 @@ ScdtServer::StopApplication ()
 
   NS_LOG_INFO ("Node " << GetNode ()->GetId () << ":");
   NS_LOG_INFO ("curAddress " << GetNode ()->GetObject<Ipv4> ()->GetAddress(1, 0).GetLocal ());
+
+  NS_LOG_INFO ("Caches: " << m_cache);
+  NS_LOG_INFO ("Cache starts: " << m_cacheStarts);
   for (int i = 0; i < m_numChildren; i++) 
     {
       InetSocketAddress curChild = InetSocketAddress::ConvertFrom (m_children[i]);
@@ -480,7 +499,7 @@ ScdtServer::Send (void)
 uint32_t
 ScdtServer::SendPing (Ptr<Socket> socket, Address & dest) 
 {
-  NS_LOG_LOGIC ("Sending ping...");
+  NS_LOG_INFO ("Sending ping...");
   uint32_t curNumPings = m_numPings;      
 
   memcpy (&m_pings[m_numPings], &dest, sizeof (Address));
@@ -515,7 +534,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
   // Handle ping request by sending a ping response
   else if (memcmp (contents, PING, 5) == 0) 
     {
-      NS_LOG_LOGIC ("Returning ping...");
+      NS_LOG_INFO ("Returning ping...");
       uint8_t returnBuf[12 + sizeof (double) + 1];
       memcpy (returnBuf, PING_RESP, 12);
       memcpy (&returnBuf[12], &m_rootPing, sizeof (double));
