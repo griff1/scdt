@@ -254,7 +254,7 @@ void
 ScdtServer::SetTcpReceiveSocket() {
       TypeId tid = TcpSocketFactory::GetTypeId ();
       std::cout << "setting up tcp receive socket";
-      InetSocketAddress local =  InetSocketAddress (InetSocketAddress::ConvertFrom (m_parentIp).GetIpv4 (), 500);
+      InetSocketAddress local =  InetSocketAddress (Ipv4Address::GetAny (), 500);
       NS_LOG_INFO("parent ip address: " << InetSocketAddress::ConvertFrom(m_parentIp).GetIpv4());
       m_parentSocket = Socket::CreateSocket (GetNode(), tid);
       if (m_parentSocket->Bind (local) == -1) {
@@ -288,7 +288,7 @@ ScdtServer::SendData ()
     if (!m_childrenSockets[i])
       {
         m_childrenSockets[i] = Socket::CreateSocket (GetNode (), tid);
-        InetSocketAddress local =  InetSocketAddress (InetSocketAddress::ConvertFrom (m_children[i]).GetIpv4 (), 500);
+        //InetSocketAddress local =  InetSocketAddress (InetSocketAddress::ConvertFrom (m_children[i]).GetIpv4 (), 500);
 
         NS_LOG_INFO("Sending data to child: " << InetSocketAddress::ConvertFrom(m_children[i]).GetIpv4());
       // Fatal error if socket type is not NS3_SOCK_STREAM or NS3_SOCK_SEQPACKET
@@ -310,7 +310,7 @@ ScdtServer::SendData ()
           }
         else if (InetSocketAddress::IsMatchingType (m_children[i]))
           {
-            if (m_childrenSockets[i]->Bind (local) == -1)
+            if (m_childrenSockets[i]->Bind () == -1)
               {
                 NS_FATAL_ERROR ("Failed to bind socket");
               }
@@ -322,7 +322,7 @@ ScdtServer::SendData ()
           MakeCallback (&ScdtServer::ConnectionFailed, this));
         m_childrenSockets[i]->SetSendCallback (
           MakeCallback (&ScdtServer::DataSend, this));
-      int ret = m_childrenSockets[i]->Connect (m_children[i]);
+      int ret = m_childrenSockets[i]->Connect (InetSocketAddress(InetSocketAddress::ConvertFrom(m_children[i]).GetIpv4 (), 500));
         std::cout << ret;
 }
      std::cout << "Got here\n";
