@@ -196,7 +196,10 @@ ScdtServer::DoSetup (void)
 
   m_cache = new uint8_t[CACHE_SIZE];
   m_cacheStarts = new int64_t[CACHE_SIZE / BLOCK_SIZE];
-  memset (m_cacheStarts, -1, CACHE_SIZE / BLOCK_SIZE);
+  for (int i = 0; i < CACHE_SIZE / BLOCK_SIZE; i++) 
+    {
+      m_cacheStarts[i] = -1;
+    }
   m_cacheEnds = new uint32_t[CACHE_SIZE / BLOCK_SIZE];
 
   m_serializedChildrenSize = 1;
@@ -609,16 +612,16 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
     {
       uint32_t start_byte;
       memcpy (&start_byte, &contents[4], sizeof (start_byte));
+      uint32_t orig_start_byte = start_byte;
 
       // Round down to next largest block start
-      start_byte = start_byte & (~BLOCK_SIZE);
-      if (m_cacheStarts[start_byte / CACHE_SIZE] == start_byte) 
+      start_byte = start_byte - (start_byte % BLOCK_SIZE);
+      if (m_cacheStarts[(start_byte % CACHE_SIZE) / BLOCK_SIZE] == orig_start_byte) 
         {
           uint8_t resp[BLOCK_SIZE + sizeof (start_byte)];
-          uint8_t* binary_string = (uint8_t *)&start_byte;
-          memcpy (resp, binary_string, sizeof (start_byte));
-          memcpy (&resp[sizeof(start_byte)], &m_cache[start_byte], BLOCK_SIZE);
-          m_socket->SendTo (resp, BLOCK_SIZE + sizeof (start_byte), 0, from);
+          memcpy (resp, &orig_start_byte, sizeof (orig_start_byte));
+          memcpy (&resp[sizeof(orig_start_byte)], &m_cache[start_byte], BLOCK_SIZE);
+          m_socket->SendTo (resp, BLOCK_SIZE + sizeof (orig_start_byte), 0, from);
         }
       else 
         {
@@ -629,18 +632,20 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
     {
       // Forward packet to all children
       NS_LOG_INFO ("Received packet to forward with contents: " << contents);
-      /*if (rand () % 100 == 0) 
+      // Drops 10% of packets
+      if (rand () % 10 == 0) 
+      //if (contents[4] == 'R')
         {
           NS_LOG_INFO ("Simulated packet drop");
         }
       else 
-        {*/
+        {
           ScdtServer::UpdateCache (contents, size);
           for (int i = 0; i < m_numChildren; i++) 
             {
               m_socket->SendTo(contents, size, 0, m_children[i]);
             }
-        //}
+        }
     }
 }
 
@@ -651,14 +656,48 @@ ScdtServer::UpdateCache (uint8_t* contents, uint32_t size)
   memcpy (&start_byte, contents, sizeof (start_byte));
   
   start_byte = start_byte - (start_byte % BLOCK_SIZE);
+  uint32_t orig_start_byte = start_byte;
+  start_byte = start_byte % CACHE_SIZE;
   uint32_t num_blocks = (size - sizeof (start_byte)) / BLOCK_SIZE + 1;
+  // TODO: Fix allocation across cache wraparound
   memcpy (&m_cache[start_byte], &contents[sizeof (start_byte)], size - sizeof (start_byte));
   for (uint8_t i = 0; i < num_blocks; i++) 
     {
-      m_cacheStarts[(start_byte / BLOCK_SIZE) + i] = start_byte + (BLOCK_SIZE * i);
+      m_cacheStarts[(start_byte / BLOCK_SIZE) + i] = (int64_t) (orig_start_byte + (BLOCK_SIZE * i));
     }
   NS_LOG_INFO ("Start byte: " << start_byte);
   NS_LOG_INFO ("Data: " << m_cache);
+
+  if (m_isRoot) 
+    {
+      return;
+    }  
+ 
+  bool wrapped = false; 
+  const uint32_t NUM_BLOCKS = CACHE_SIZE / BLOCK_SIZE;
+  uint8_t cntr = 1;
+  for (uint8_t i = (start_byte / BLOCK_SIZE) - 1; 
+       i != (start_byte / BLOCK_SIZE) % NUM_BLOCKS; 
+       i--) 
+    {
+      if (i == 255) 
+        {
+          i = NUM_BLOCKS - 1;
+          wrapped = true;
+        }
+      if ((m_cacheStarts[i] == -1 && !wrapped) || 
+          (m_cacheStarts[i] != m_cacheStarts [i + 1] - BLOCK_SIZE && m_cacheStarts[i] != -1)) 
+        {
+          NS_LOG_INFO ("Sent NACK: ");
+          NS_LOG_INFO ("Current cache: " << m_cache);
+          uint8_t toSend[4 + sizeof(uint32_t)];
+          memcpy (toSend, NACK, 4);
+          uint32_t byteToReq = orig_start_byte - (cntr * BLOCK_SIZE);
+          memcpy (&toSend[4], &byteToReq, sizeof(uint32_t));
+          m_socket->SendTo(toSend, 4 + sizeof (uint32_t), 0, m_parentIp);
+        }
+      cntr++; 
+    }
 }
 
 void
