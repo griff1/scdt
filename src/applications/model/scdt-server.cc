@@ -518,8 +518,16 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
       NS_LOG_LOGIC ("Returning ping...");
       uint8_t returnBuf[12 + sizeof (double) + 1];
       memcpy (returnBuf, PING_RESP, 12);
-      memcpy (&returnBuf[12], &m_rootPing, sizeof (double)); 
-      socket->SendTo (returnBuf, 16, 0, from);
+      memcpy (&returnBuf[12], &m_rootPing, sizeof (double));
+      if (m_isRoot) 
+        {
+          returnBuf[12 + sizeof (double)] = 1;
+        }
+      else 
+        {
+          returnBuf[12 + sizeof (double)] = 0;
+        }
+      socket->SendTo (returnBuf, 12 + sizeof (double) + 1, 0, from);
     }
   else if (memcmp (contents, CHILDREN, 8) == 0) 
     {
@@ -534,12 +542,12 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
           
       for (uint32_t i = 0; i < m_numPings; i++) 
         {
-          if (m_pings[i] == from) 
+          if (m_pings[i] == from || contents[20] == 1) 
             {
               // TODO: Convert to a priority queue?
               m_pingTime[i] = Simulator::Now ().GetSeconds () - m_pingStartTime[i];
               m_roundNodeCount--;
-              if (m_pings[i] == m_rootIp) 
+              if (i == 0) 
                 {
                   m_rootPing = m_pingTime[i];
                   m_stretch[i] = 1;
