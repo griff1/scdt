@@ -191,7 +191,7 @@ private:
   uint32_t m_serializedChildrenSize;
 
   uint8_t* m_cache;
-  uint32_t* m_cacheStarts;
+  int64_t* m_cacheStarts;
   uint32_t* m_cacheEnds;
 
   uint32_t m_count; //!< Maximum number of packets the application will send
