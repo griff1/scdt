@@ -30,16 +30,15 @@
 
 using namespace ns3;
 
-NS_LOG_COMPONENT_DEFINE ("BriteExample");
+NS_LOG_COMPONENT_DEFINE ("BriteScdt");
 
 int
 main (int argc, char *argv[])
 {
   srand (time(NULL));
-  LogComponentEnable ("UdpEchoClientApplication", LOG_LEVEL_ALL);
-  LogComponentEnable ("UdpEchoServerApplication", LOG_LEVEL_ALL);
+  LogComponentEnable ("ScdtServerApplication", LOG_LEVEL_ALL);
 
-  LogComponentEnable ("BriteExample", LOG_LEVEL_ALL);
+  LogComponentEnable ("BriteScdt", LOG_LEVEL_ALL);
 
   // BRITE needs a configuration file to build its graph. By default, this
   // example will use the TD_ASBarabasi_RTWaxman.conf file. There are many others
@@ -130,9 +129,9 @@ main (int argc, char *argv[])
   ApplicationContainer generalAppContainer = scdtServerHelper.Install(overlayContainer);
 
   rootAppContainer.Start (Seconds (1.0));
-  rootAppContainer.Stop (Seconds (10.0));
+  rootAppContainer.Stop (Seconds (20.0));
   generalAppContainer.Start (Seconds (1.0));
-  generalAppContainer.Stop (Seconds (10.0));
+  generalAppContainer.Stop (Seconds (20.0));
 
   if (!nix)
     {
@@ -142,10 +141,10 @@ main (int argc, char *argv[])
   if (tracing)
     {
       AsciiTraceHelper ascii;
-      p2p.EnableAsciiAll (ascii.CreateFileStream ("briteLeaves.tr"));
+      //p2p.EnableAsciiAll (ascii.CreateFileStream ("briteLeaves.tr"));
     }
   // Run the simulator
-  Simulator::Stop (Seconds (6.0));
+  //Simulator::Stop (Seconds (6.0));
   Simulator::Run ();
   Simulator::Destroy ();
 
