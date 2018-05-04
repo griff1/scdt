@@ -247,7 +247,7 @@ ScdtServer::StartApplication (void)
       //Simulator::Schedule(Seconds(3.5), &ScdtServer::SetTcpReceiveSocket, this);
       m_socket->SendTo (ATTACH, 7, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort));
 
-      Simulator::Schedule (Seconds(SENDTCPTIME-10), &ScdtServer::SetTcpReceiveSocket, this);
+      Simulator::Schedule (Seconds(SENDTCPTIME-20), &ScdtServer::SetTcpReceiveSocket, this);
       //std::string cmd ("ATTACH");
       //ScdtServer::SetFill(cmd);
       //ScheduleTransmit (Seconds (0.), &ScdtServer::TryAttach);
@@ -256,7 +256,7 @@ ScdtServer::StartApplication (void)
     {
       Simulator::Schedule (Seconds (SENDTCPTIME), &ScdtServer::rootSendData, this);
     }
-  Simulator::Schedule (Seconds (SENDTCPTIME-20), &ScdtServer::SetSockets, this);
+  Simulator::Schedule (Seconds (SENDTCPTIME-10), &ScdtServer::SetSockets, this);
   //NS_LOG_INFO ("Successfully started application");
 }
 
