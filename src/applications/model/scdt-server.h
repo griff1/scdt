@@ -30,7 +30,7 @@
 #define MAX_FANOUT 1000
 #define MAX_PINGS 100
 #define CACHE_SIZE 1000
-#define BLOCK_SIZE 10
+#define BLOCK_SIZE 20
 #define MAX_STRETCH 4
 
 namespace ns3 {
