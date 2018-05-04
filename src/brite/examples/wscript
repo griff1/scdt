@@ -6,4 +6,6 @@ def build(bld):
    obj = bld.create_ns3_program('brite-MPI-example', ['brite', 'internet', 'point-to-point', 'nix-vector-routing', 'applications', 'mpi'])
    obj.source = 'brite-MPI-example.cc'  
    obj = bld.create_ns3_program('scdt-brite', ['brite', 'internet', 'point-to-point', 'nix-vector-routing', 'applications'])
-   obj.source = 'scdt-brite.cc' 
+   obj.source = 'scdt-brite.cc'
+   obj = bld.create_ns3_program('scdt-brite-2', ['brite', 'internet', 'point-to-point', 'nix-vector-routing', 'applications'])
+   obj.source = 'scdt-brite-2.cc'  

@@ -28,7 +28,7 @@
 #include <fstream>
 #include <time.h>
 
-#define OVERLAY_NODES 12
+#define OVERLAY_NODES 100
 
 using namespace ns3;
 
@@ -38,9 +38,9 @@ int
 main (int argc, char *argv[])
 {
   srand (time(NULL));
-  LogComponentEnable ("ScdtServerApplication", LOG_LEVEL_ALL);
+  LogComponentEnable ("ScdtServerApplication", LOG_LEVEL_INFO);
 
-  LogComponentEnable ("BriteScdt", LOG_LEVEL_ALL);
+  LogComponentEnable ("BriteScdt", LOG_LEVEL_INFO);
 
   // BRITE needs a configuration file to build its graph. By default, this
   // example will use the TD_ASBarabasi_RTWaxman.conf file. There are many others
@@ -126,9 +126,9 @@ main (int argc, char *argv[])
       conn.Add (bth.GetLeafNodeForAs (i, j));
       NetDeviceContainer curDevContainer;
 
-      char dataRate[5];
+      char dataRate[10];
       sprintf (dataRate, "%dMbps", rand() % 10 + 1);
-      char delay[3];
+      char delay[10];
       sprintf (delay, "%dms", rand() % 50 + 1);
 
       p2p.SetDeviceAttribute ("DataRate", StringValue (dataRate));
@@ -156,7 +156,12 @@ main (int argc, char *argv[])
 
   rootAppContainer.Start (Seconds (1.0));
   rootAppContainer.Stop (Seconds (500.0));
-  generalAppContainer.Start (Seconds (1.0));
+
+  for (uint32_t i = 0; i < generalAppContainer.GetN(); i++) 
+    {
+      generalAppContainer.Get (i)->SetStartTime (Seconds(rand () % 50 + 1));
+    }
+  //generalAppContainer.Start (Seconds (1.0));
   generalAppContainer.Stop (Seconds (500.0));
 
   if (!nix)
