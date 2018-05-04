@@ -22,7 +22,8 @@
 #include <stdio.h>
 #include <time.h>
 
-#define NUM_NODES 6 
+#define NUM_NODES 40
+#define SENDTCPTIME 20
 
 using namespace ns3;
 
@@ -91,7 +92,7 @@ main (int argc, char *argv[])
 
   
     clientApps.Start (Seconds (1.0));
-    clientApps.Stop (Seconds (10.0));
+    clientApps.Stop (Seconds (100.0));
   }
   Ipv4GlobalRoutingHelper::PopulateRoutingTables();
   // tried to do this, but didn't work
@@ -102,7 +103,7 @@ main (int argc, char *argv[])
 
   ApplicationContainer serverApps = rootServer.Install (root.Get (0));
   serverApps.Start (Seconds (1.0));
-  serverApps.Stop (Seconds (10.0));
+  serverApps.Stop (Seconds (100.0));
 
 
   Simulator::Run ();

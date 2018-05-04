@@ -211,6 +211,7 @@ private:
   Ptr<Socket>* m_childrenSockets;
 
   bool m_isRoot; // True if node is root of tree; false otherwise
+  double m_packLatencySum = 0;
 
   Address* m_pings; // Address of pinging host
   double* m_pingStartTime; // Parallel array to 'pings'; start time of most recent ping

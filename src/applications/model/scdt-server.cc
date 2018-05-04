@@ -34,6 +34,12 @@
 #include "ns3/network-module.h"
 #include "ns3/ipv4.h"
 
+#include <iostream>
+#include <fstream>
+
+#define SENDTCPTIME 20
+#define NUM_NODES 40
+
 namespace ns3 {
 
 const uint8_t ATTACH[] = "ATTACH";
@@ -245,7 +251,7 @@ ScdtServer::StartApplication (void)
     }
   else 
     {
-      Simulator::Schedule (Seconds (8), &ScdtServer::SendData, this);
+      Simulator::Schedule (Seconds (SENDTCPTIME), &ScdtServer::SendData, this);
     }
   NS_LOG_INFO ("Successfully started application");
 }
@@ -276,7 +282,14 @@ ScdtServer::HandleTcpRead(Ptr<Socket> socket)
     Address from;
     if (m_numChildren == 0) {
         Ptr<Packet> packet = socket->RecvFrom(from);
-        NS_LOG_INFO("At time " << Simulator::Now ().GetSeconds() << "s node " << GetNode()->GetId() << " received " << packet->GetSize() << " bytes from " << InetSocketAddress::ConvertFrom(from).GetIpv4());
+        NS_LOG_INFO("LEAF NODE: At time " << Simulator::Now ().GetSeconds() << "s node " << GetNode()->GetId() << " received " << packet->GetSize() << " bytes from " << InetSocketAddress::ConvertFrom(from).GetIpv4());
+        Time t = Seconds (SENDTCPTIME);
+        double latencyDiff = Simulator::Now ().GetSeconds() - t.GetSeconds();
+        
+        std::ofstream file;
+        file.open("times.txt", std::fstream::app);
+        file << latencyDiff << "\n";
+        file.close();
         return;
     }
     ScdtServer::SendData();
@@ -347,7 +360,6 @@ ScdtServer::StopApplication ()
 
   //NS_LOG_INFO ("Children of " << thisNode.GetIpv4 () << ": ");
   NS_LOG_INFO ("Node " << GetNode ()->GetId () << ": curAddress: " << GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal());
-  
       //NS_LOG_INFO("parent ip address: " << InetSocketAddress::ConvertFrom(m_parentIp).GetIpv4());
   for (int i = 0; i < m_numChildren; i++) 
     {
