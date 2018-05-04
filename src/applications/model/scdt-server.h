@@ -31,7 +31,6 @@
 #define MAX_PINGS 100
 #define CACHE_SIZE 1000
 #define BLOCK_SIZE 20
-#define MAX_STRETCH 4
 
 namespace ns3 {
 
@@ -233,6 +232,8 @@ private:
   std::set <uint32_t> m_possibleParentsSet;
   double* m_stretch;
   double m_rootPing;
+
+  int m_depth;
 
   Address m_nextPotentialParent;
   uint32_t m_nextPotentialParentPing;

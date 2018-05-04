@@ -34,6 +34,8 @@
 #include "ns3/ipv4.h"
 #include <unistd.h>
 
+#define MAX_STRETCH 2
+
 namespace ns3 {
 
 const uint8_t ATTACH[] = "ATTACH";
@@ -200,6 +202,8 @@ ScdtServer::DoSetup (void)
   m_rootPing = 0;
   m_roundNodeCount = 0;
 
+  m_depth = 0;
+
   m_cache = new uint8_t[CACHE_SIZE];
   m_cacheStarts = new int64_t[CACHE_SIZE / BLOCK_SIZE];
   for (int i = 0; i < CACHE_SIZE / BLOCK_SIZE; i++) 
@@ -268,7 +272,6 @@ ScdtServer::Attach ()
 {
     ScdtServer::SendPing (m_socket, m_rootIp);
     m_socket->SendTo (CHILDREN, 8, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort));
-
 }
 
 void
@@ -312,7 +315,9 @@ ScdtServer::StopApplication ()
 
   NS_LOG_INFO ("Caches: " << m_cache);
   NS_LOG_INFO ("Cache starts: " << m_cacheStarts);
-  
+ 
+  NS_LOG_INFO ("Depth: " << m_depth);
+ 
   if (m_isRoot) 
     {
       NS_LOG_INFO ("I AM THE ROOT");
@@ -601,6 +606,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
       if (m_roundNodeCount == 0 && from != m_rootIp && m_possibleParentsStk.size() != 0) 
         {
           Address bestAddr;
+          memcpy (&bestAddr, &m_parentIp, sizeof (Address));
           double bestStretch = 999;
           while (m_possibleParentsStk.size() != 0) 
             {
@@ -631,6 +637,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
   // Handle addresses of additional attach points to try
   else if (memcmp (contents, TRY_RESP, 3) == 0)
     {
+      m_depth++;
       // uint8_t numEntries = contents[3];
       //NS_LOG_INFO ("handling try");
       uint32_t cntr = 4;
