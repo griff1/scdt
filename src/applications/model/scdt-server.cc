@@ -247,7 +247,7 @@ ScdtServer::StartApplication (void)
       //Simulator::Schedule(Seconds(3.5), &ScdtServer::SetTcpReceiveSocket, this);
       m_socket->SendTo (ATTACH, 7, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort));
 
-      Simulator::Schedule (Seconds(SENDTCPTIME-5), &ScdtServer::SetTcpReceiveSocket, this);
+      Simulator::Schedule (Seconds(SENDTCPTIME-10), &ScdtServer::SetTcpReceiveSocket, this);
       //std::string cmd ("ATTACH");
       //ScdtServer::SetFill(cmd);
       //ScheduleTransmit (Seconds (0.), &ScdtServer::TryAttach);
@@ -256,6 +256,7 @@ ScdtServer::StartApplication (void)
     {
       Simulator::Schedule (Seconds (SENDTCPTIME), &ScdtServer::rootSendData, this);
     }
+  Simulator::Schedule (Seconds (SENDTCPTIME-20), &ScdtServer::SetSockets, this);
   //NS_LOG_INFO ("Successfully started application");
 }
 
@@ -296,75 +297,17 @@ ScdtServer::HandleTcpRead(Ptr<Socket> socket)
 void
 ScdtServer::SendData (Ptr<Packet> packet) 
 {
-  //NS_LOG_INFO("Starting up TCP streams");
-  TypeId tid = TcpSocketFactory::GetTypeId ();
-  for (int i = 0; i < m_numChildren; i++) 
-    {
-    if (!m_childrenSockets[i])
-      {
-        m_childrenSockets[i] = Socket::CreateSocket (GetNode (), tid);
-        //InetSocketAddress local =  InetSocketAddress (InetSocketAddress::ConvertFrom (m_children[i]).GetIpv4 (), 500);
-
-        //NS_LOG_INFO("Sending data to child: " << InetSocketAddress::ConvertFrom(m_children[i]).GetIpv4());
-      // Fatal error if socket type is not NS3_SOCK_STREAM or NS3_SOCK_SEQPACKET
-        if (m_childrenSockets[i]->GetSocketType () != Socket::NS3_SOCK_STREAM &&
-          m_childrenSockets[i]->GetSocketType () != Socket::NS3_SOCK_SEQPACKET)
-          {
-            NS_FATAL_ERROR ("Using BulkSend with an incompatible socket type. "
-                            "BulkSend requires SOCK_STREAM or SOCK_SEQPACKET. "
-                            "In other words, use TCP instead of UDP.");
-          }
-
-        if (Inet6SocketAddress::IsMatchingType (m_children[i]))
-          {
-            std::cout << "NOT GOOD\n";
-            if (m_childrenSockets[i]->Bind6 () == -1)
-              {
-                NS_FATAL_ERROR ("Failed to bind socket");
-              }
-          }
-        else if (InetSocketAddress::IsMatchingType (m_children[i]))
-          {
-            if (m_childrenSockets[i]->Bind () == -1)
-              {
-                NS_FATAL_ERROR ("Failed to bind socket");
-              }
-          }
-
-        m_childrenSockets[i]->ShutdownRecv ();
-        //m_childrenSockets[i]->SetConnectCallback (
-         // MakeCallback (&ScdtServer::ConnectionSucceeded, this),
-          //MakeCallback (&ScdtServer::ConnectionFailed, this));
-        m_childrenSockets[i]->SetSendCallback (
-          MakeCallback (&ScdtServer::DataSend, this));
-        m_childrenSockets[i]->Connect (InetSocketAddress(InetSocketAddress::ConvertFrom(m_children[i]).GetIpv4 (), 500));
-}
-      /*NS_LOG_INFO (GetNode()->GetId());
-      uint8_t someFrigginData[] = "RandomData";
-      Ptr<Packet> p = Create<Packet> (someFrigginData, 11);
-      int actual = m_childrenSockets[i]->Send (p);
-      NS_LOG_INFO("Bytes sent: " << actual);
-*/
-      ScdtServer::SendTcp(m_childrenSockets[i], packet);
+      
+  for (int i = 0; i < m_numChildren; i++) {
+    ScdtServer::SendTcp(m_childrenSockets[i], packet);
     }
 }
 
-
 void
-ScdtServer::rootSendData () 
-{
-    uint8_t buf[15];
-    double curTime = Simulator::Now().GetSeconds();
-    memcpy(buf, &curTime, sizeof(double));
-    Ptr<Packet> packet = Create<Packet> (buf, sizeof(double));
-    
-    
-    //NS_LOG_INFO("Starting up TCP streams");
-  TypeId tid = TcpSocketFactory::GetTypeId ();
+ScdtServer::SetSockets() {
+   TypeId tid = TcpSocketFactory::GetTypeId ();
   for (int i = 0; i < m_numChildren; i++) 
     {
-    if (!m_childrenSockets[i])
-      {
         m_childrenSockets[i] = Socket::CreateSocket (GetNode (), tid);
         //InetSocketAddress local =  InetSocketAddress (InetSocketAddress::ConvertFrom (m_children[i]).GetIpv4 (), 500);
 
@@ -402,7 +345,20 @@ ScdtServer::rootSendData ()
           MakeCallback (&ScdtServer::DataSend, this));
         m_childrenSockets[i]->Connect (InetSocketAddress(InetSocketAddress::ConvertFrom(m_children[i]).GetIpv4 (), 500));
         }
-      ScdtServer::SendTcp(m_childrenSockets[i], packet);
+   
+}
+void
+ScdtServer::rootSendData () 
+{
+    uint8_t buf[15];
+    double curTime = Simulator::Now().GetSeconds();
+    memcpy(buf, &curTime, sizeof(double));
+    Ptr<Packet> packet = Create<Packet> (buf, sizeof(double));
+    
+    
+  for (int i = 0; i < m_numChildren; i++) {
+    //NS_LOG_INFO("Starting up TCP streams");
+     ScdtServer::SendTcp(m_childrenSockets[i], packet);
     }
 }
 
@@ -708,7 +664,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
         }
     } else if (memcmp (contents, REATTACH, 8) == 0) {
         m_parentIp = m_rootIp; 
-        NS_LOG_INFO("HAHAHAHAHAH");
+        //NS_LOG_INFO("HAHAHAHAHAH");
         //m_parentSocket->Close();
         m_socket->SendTo (ATTACH, 7, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort));
     }

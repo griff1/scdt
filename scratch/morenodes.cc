@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#define NUM_NODES 100 
+#define NUM_NODES 50 
 
 using namespace ns3;
 

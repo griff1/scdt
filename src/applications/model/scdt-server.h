@@ -79,6 +79,8 @@ public:
 
   void rootSendData ();
 
+  void SetSockets ();
+
   double latencyDiff;
   
   void InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* contents, uint32_t size);
