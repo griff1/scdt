@@ -75,8 +75,12 @@ public:
 
   uint32_t SendPing (Ptr<Socket> socket, Address & dest);
   
-  void SendData ();
+  void SendData (Ptr<Packet> packet);
 
+  void rootSendData ();
+
+  double latencyDiff;
+  
   void InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* contents, uint32_t size);
 
   void DoSetup (void);
@@ -232,7 +236,7 @@ private:
 
   void DataSend (Ptr<Socket> socket, uint32_t);
 
-  void SendTcp (Ptr<Socket> socket);
+  void SendTcp (Ptr<Socket> socket, Ptr<Packet> packet);
 
   void SetTcpReceiveSocket();
 
