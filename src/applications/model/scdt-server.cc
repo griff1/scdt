@@ -277,10 +277,13 @@ ScdtServer::SendData ()
   NS_LOG_INFO("Sending data");
   uint32_t start = 0;
   uint8_t someFrigginData[] = "RandomData";
-  uint32_t dataSize = 10;
+  uint32_t dataSize = 20;
   uint8_t toSend[dataSize + sizeof (start)];
   memcpy (toSend, &start, sizeof (start));
   memcpy (&toSend[sizeof (start)], someFrigginData, dataSize);
+
+  double curTime = Simulator::Now ().GetSeconds();
+  memcpy (&toSend[sizeof (start)], &curTime, sizeof (double));
 
   uint8_t toSend2[dataSize + sizeof (start)];
   uint8_t someOtherFrigginData[] = "OtherData1";
@@ -289,13 +292,13 @@ ScdtServer::SendData ()
   memcpy (&toSend2[sizeof (start2)], someOtherFrigginData, dataSize);
 
   ScdtServer::UpdateCache (toSend, 10 + sizeof (start));
-  ScdtServer::UpdateCache (toSend2, 10 + sizeof (start2));  
+  //ScdtServer::UpdateCache (toSend2, 10 + sizeof (start2));  
   for (int i = 0; i < m_numChildren; i++) 
     {
       NS_LOG_INFO ("Sending: " << toSend);
       m_socket->SendTo (toSend, 10 + sizeof (start), 0, m_children[i]);
       
-      m_socket->SendTo (toSend2, 10 + sizeof (start2), 0, m_children[i]);
+      //m_socket->SendTo (toSend2, 10 + sizeof (start2), 0, m_children[i]);
     }
 }
 
@@ -692,10 +695,17 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
             {
               m_socket->SendTo(contents, size, 0, m_children[i]);
             }
-          if (m_numChildren == 0) 
+          double pktTime;
+          memcpy (&pktTime, &contents[sizeof (uint32_t)], sizeof (double));
+          double latencyDiff = Simulator::Now ().GetSeconds () - pktTime;
+          std::ofstream file;
+          file.open("times.txt", std::fstream::app);
+          file << latencyDiff << "\n";
+          file.close ();
+          /*if (m_numChildren == 0) 
             {
               NS_LOG_INFO ("LEAF NODE: At time" << Simulator::Now ().GetSeconds() << "s node " << GetNode()->GetId());
-            }
+            }*/
        // }
     }
 }
