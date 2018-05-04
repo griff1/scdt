@@ -43,7 +43,7 @@ main (int argc, char *argv[])
   // BRITE needs a configuration file to build its graph. By default, this
   // example will use the TD_ASBarabasi_RTWaxman.conf file. There are many others
   // which can be found in the BRITE/conf_files directory
-  std::string confFile = "src/brite/examples/conf_files/scdt.conf";
+  std::string confFile = "src/brite/examples/conf_files/RTBarabasi10.conf";
   bool tracing = false;
   bool nix = false;
 
@@ -129,9 +129,9 @@ main (int argc, char *argv[])
   ApplicationContainer generalAppContainer = scdtServerHelper.Install(overlayContainer);
 
   rootAppContainer.Start (Seconds (1.0));
-  rootAppContainer.Stop (Seconds (20.0));
+  rootAppContainer.Stop (Seconds (100.0));
   generalAppContainer.Start (Seconds (1.0));
-  generalAppContainer.Stop (Seconds (20.0));
+  generalAppContainer.Stop (Seconds (100.0));
 
   if (!nix)
     {
