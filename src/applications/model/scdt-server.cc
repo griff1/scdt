@@ -253,13 +253,13 @@ ScdtServer::StartApplication (void)
       m_parentPort = m_rootPort;
 
       ScdtServer::SendPing (m_socket, m_rootIp);
-      usleep (250000);
+      usleep (50000);
       m_socket->SendTo (CHILDREN, 8, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort));
       //m_socket->SendTo (PING, 5, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort)); 
     }
   else 
     {
-      Simulator::Schedule (Seconds (4), &ScdtServer::SendData, this);
+      Simulator::Schedule (Seconds (20), &ScdtServer::SendData, this);
     }
   NS_LOG_INFO ("Successfully started application");
 }
@@ -302,6 +302,11 @@ ScdtServer::StopApplication ()
 
   NS_LOG_INFO ("Caches: " << m_cache);
   NS_LOG_INFO ("Cache starts: " << m_cacheStarts);
+  
+  if (m_isRoot) 
+    {
+      NS_LOG_INFO ("I AM THE ROOT");
+    }
   for (int i = 0; i < m_numChildren; i++) 
     {
       InetSocketAddress curChild = InetSocketAddress::ConvertFrom (m_children[i]);
@@ -594,10 +599,9 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
                   memcpy (&bestAddr, &m_pings[curParent], sizeof (Address));
                 }
             }
+          memcpy (&m_parentIp, &bestAddr, sizeof (Address));
           if (bestStretch != 999) 
             {
-              memcpy (&m_parentIp, &bestAddr, sizeof (Address));
-              
               m_socket->SendTo (CHILDREN, 8, 0, m_parentIp);
             }
           else 
@@ -672,6 +676,10 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
           for (int i = 0; i < m_numChildren; i++) 
             {
               m_socket->SendTo(contents, size, 0, m_children[i]);
+            }
+          if (m_numChildren == 0) 
+            {
+              NS_LOG_INFO ("LEAF NODE: At time" << Simulator::Now ().GetSeconds() << "s node " << GetNode()->GetId());
             }
         }
     }
