@@ -187,6 +187,8 @@ private:
 
   void UpdateCache (uint8_t* contents, uint32_t size);
 
+  void Attach ();
+
   uint8_t* m_serializedChildren; 
   uint32_t m_serializedChildrenSize;
 

@@ -40,7 +40,7 @@ const uint8_t ATTACH[] = "ATTACH";
 const uint8_t PING[] = "PING";
 const uint8_t PING_RESP[] = "PINGRESPONSE";
 const uint8_t TRY_RESP[] = "TRY";
-const uint8_t ATTACH_SUC[] = "ATTACHSUCCESS";
+const uint8_t ATTACH_SUC[] = "SUCCESSATTACH";
 const uint8_t NACK[] = "NACK";
 const uint8_t CHILDREN[] = "CHILDREN";
 
@@ -251,17 +251,24 @@ ScdtServer::StartApplication (void)
     {
       m_parentIp = m_rootIp;
       m_parentPort = m_rootPort;
-
-      ScdtServer::SendPing (m_socket, m_rootIp);
-      usleep (50000);
-      m_socket->SendTo (CHILDREN, 8, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort));
-      //m_socket->SendTo (PING, 5, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort)); 
+      
+      float wait = (float)rand() / (float)(RAND_MAX / 30.0) + 1;
+      Simulator::Schedule (Seconds (wait), &ScdtServer::Attach, this);
+      //Simulator::Schedule (Seconds (wait + 30), &ScdtServer::Attach, this);
     }
   else 
     {
-      Simulator::Schedule (Seconds (20), &ScdtServer::SendData, this);
+      Simulator::Schedule (Seconds (100), &ScdtServer::SendData, this);
     }
   NS_LOG_INFO ("Successfully started application");
+}
+
+void
+ScdtServer::Attach () 
+{
+    ScdtServer::SendPing (m_socket, m_rootIp);
+    m_socket->SendTo (CHILDREN, 8, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort));
+
 }
 
 void
@@ -568,7 +575,10 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
             {
               // TODO: Convert to a priority queue?
               m_pingTime[i] = Simulator::Now ().GetSeconds () - m_pingStartTime[i];
-              m_roundNodeCount--;
+              if (m_possibleParentsSet.count(i) != 0 && m_roundNodeCount != 0) 
+                {
+                  m_roundNodeCount--;
+                }
               if (i == 0) 
                 {
                   m_rootPing = m_pingTime[i];
@@ -592,9 +602,13 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
           while (m_possibleParentsStk.size() != 0) 
             {
               uint32_t curParent = m_possibleParentsStk.top ();
+              NS_LOG_INFO ("Ping number: " << curParent);
               m_possibleParentsStk.pop ();
+              NS_LOG_INFO ("Evaluating parent stretch: " << m_stretch[curParent]);
               if (m_stretch[curParent] < bestStretch && m_stretch[curParent] < MAX_STRETCH) 
                 {
+                  if (m_stretch[curParent] == 0) 
+                    {}
                   bestStretch = m_stretch[curParent];
                   memcpy (&bestAddr, &m_pings[curParent], sizeof (Address));
                 }
@@ -603,6 +617,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
           if (bestStretch != 999) 
             {
               m_socket->SendTo (CHILDREN, 8, 0, m_parentIp);
+              NS_LOG_INFO ("Requesting Children");
             }
           else 
             {
