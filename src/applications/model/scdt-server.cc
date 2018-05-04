@@ -46,6 +46,7 @@ const uint8_t PING[] = "PING";
 const uint8_t PING_RESP[] = "PINGRESPONSE";
 const uint8_t TRY_RESP[] = "TRY";
 const uint8_t ATTACH_SUC[] = "ATTACHSUCCESS";
+const uint8_t REATTACH[] = "REATTACH";
 bool m_connected = false;
 
 NS_LOG_COMPONENT_DEFINE ("ScdtServerApplication");
@@ -190,6 +191,7 @@ ScdtServer::DoSetup (void)
   memcpy (&m_rootIp, &m_peerAddress, sizeof (Address));
   m_rootPort = m_peerPort;
 
+  latencyDiff = 0;
   m_children = new Address[MAX_FANOUT];
   m_childrenPorts = new uint16_t[MAX_FANOUT];
   m_shortestPing = new double[MAX_FANOUT];
@@ -244,6 +246,8 @@ ScdtServer::StartApplication (void)
      
       //Simulator::Schedule(Seconds(3.5), &ScdtServer::SetTcpReceiveSocket, this);
       m_socket->SendTo (ATTACH, 7, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort));
+
+      Simulator::Schedule (Seconds(SENDTCPTIME-5), &ScdtServer::SetTcpReceiveSocket, this);
       //std::string cmd ("ATTACH");
       //ScdtServer::SetFill(cmd);
       //ScheduleTransmit (Seconds (0.), &ScdtServer::TryAttach);
@@ -349,7 +353,6 @@ ScdtServer::SendData (Ptr<Packet> packet)
 void
 ScdtServer::rootSendData () 
 {
-
     uint8_t buf[15];
     double curTime = Simulator::Now().GetSeconds();
     memcpy(buf, &curTime, sizeof(double));
@@ -414,19 +417,25 @@ ScdtServer::StopApplication ()
         file.open("times.txt", std::fstream::app);
         file << latencyDiff << "\n";
         file.close();
+    if (latencyDiff == 0) {
+        NS_LOG_INFO ("Node " << GetNode ()->GetId () << ": curAddress: " << GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal() << " NO PACKET");
+     } 
   }
+  int childCount = (int) m_numChildren;
+  std::ofstream tile;
+  tile.open("child.txt", std::fstream::app);
+  tile << childCount << "\n";
+  tile.close();
 
-  //InetSocketAddress thisNode = InetSocketAddress::ConvertFrom (GetNode ());
+  NS_LOG_INFO ("Node " << GetNode ()->GetId () << ": curAddress: " << GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal());
+     
 
-  //NS_LOG_INFO ("Children of " << thisNode.GetIpv4 () << ": ");
-  //NS_LOG_INFO ("Node " << GetNode ()->GetId () << ": curAddress: " << GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal());
-      //NS_LOG_INFO("parent ip address: " << InetSocketAddress::ConvertFrom(m_parentIp).GetIpv4());
-  /*for (int i = 0; i < m_numChildren; i++) 
+  for (int i = 0; i < m_numChildren; i++) 
     {
 
       InetSocketAddress curChild = InetSocketAddress::ConvertFrom (m_children[i]);
-      //NS_LOG_INFO ("-- " << curChild.GetIpv4 ());
-    }*/
+      NS_LOG_INFO ("-- " << curChild.GetIpv4 ());
+    }
 
   if (m_socket != 0) 
     {
@@ -697,6 +706,11 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
               break;
             }
         }
+    } else if (memcmp (contents, REATTACH, 8) == 0) {
+        m_parentIp = m_rootIp; 
+        NS_LOG_INFO("HAHAHAHAHAH");
+        //m_parentSocket->Close();
+        m_socket->SendTo (ATTACH, 7, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort));
     }
   // Handle addresses of additional attach points to try
   else if (memcmp (contents, TRY_RESP, 3) == 0)
@@ -722,7 +736,6 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
   else if (memcmp (contents, ATTACH_SUC, 14) == 0) 
     {
       memcpy(&m_parentIp, &from, sizeof (Address));
-      ScdtServer::SetTcpReceiveSocket();
     }
   else 
     {
@@ -812,6 +825,7 @@ ScdtServer::UpdateChildren (Address & addr, double pingTime)
       memcpy (&oldAddr, &m_children[maxPingIndex], sizeof(Address));
       memcpy (&m_children[maxPingIndex], &addr, sizeof (Address));
       m_shortestPing[maxPingIndex] = pingTime;
+      m_socket->SendTo (REATTACH, 8, 0, oldAddr);
 
       m_socket->SendTo (ATTACH_SUC, 14, 0, addr);
       ScdtServer::SerializeChildren ();
