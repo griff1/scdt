@@ -28,7 +28,7 @@
 #include <fstream>
 #include <time.h>
 
-#define OVERLAY_NODES 250
+#define OVERLAY_NODES 50
 
 using namespace ns3;
 
@@ -123,7 +123,7 @@ main (int argc, char *argv[])
       asCntr--;
 
       NodeContainer conn (overlayContainer.Get(overlayCounter));
-      conn.Add (bth.GetLeafNodeForAs (i, j));
+      conn.Add (bth.GetLeafNodeForAs (i, rand () % bth.GetNLeafNodesForAs(i) + 1));
       NetDeviceContainer curDevContainer;
 
       char dataRate[10];

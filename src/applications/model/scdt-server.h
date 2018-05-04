@@ -239,6 +239,7 @@ private:
   uint32_t m_nextPotentialParentPing;
   uint8_t m_roundNodeCount;
 
+  double m_latencyDiff;
   /// Callbacks for tracing the packet Tx events
   TracedCallback<Ptr<const Packet> > m_txTrace;
 };

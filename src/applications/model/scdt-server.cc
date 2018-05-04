@@ -243,7 +243,7 @@ ScdtServer::StartApplication (void)
           uint8_t buf[len + 1];
           m_rootIp.CopyAllTo(buf, len);
           buf[len] = '\0';
-          NS_LOG_INFO (buf);
+//          NS_LOG_INFO (buf);
           NS_ASSERT_MSG (false, "Incompatible address type: " << m_rootIp);
         }
     }
@@ -264,7 +264,8 @@ ScdtServer::StartApplication (void)
     {
       Simulator::Schedule (Seconds (100), &ScdtServer::SendData, this);
     }
-  NS_LOG_INFO ("Successfully started application");
+  //NS_LOG_INFO ("Successfully started application");
+
 }
 
 void
@@ -333,6 +334,13 @@ ScdtServer::StopApplication ()
       m_socket->Close ();
       m_socket->SetRecvCallback (MakeNullCallback<void, Ptr<Socket> > ());
       m_socket = 0;
+    }
+  if (!m_isRoot) 
+    {
+      std::ofstream file;
+      file.open("times.txt", std::fstream::app);
+      file << m_latencyDiff << "\n";
+      file.close ();
     }
 
   Simulator::Cancel (m_sendEvent);
@@ -705,10 +713,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
           double pktTime;
           memcpy (&pktTime, &contents[sizeof (uint32_t)], sizeof (double));
           double latencyDiff = Simulator::Now ().GetSeconds () - pktTime;
-          std::ofstream file;
-          file.open("times.txt", std::fstream::app);
-          file << latencyDiff << "\n";
-          file.close ();
+          m_latencyDiff = latencyDiff;
           /*if (m_numChildren == 0) 
             {
               NS_LOG_INFO ("LEAF NODE: At time" << Simulator::Now ().GetSeconds() << "s node " << GetNode()->GetId());
