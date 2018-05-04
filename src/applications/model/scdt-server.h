@@ -211,6 +211,8 @@ private:
   Address m_rootIp; // Address of root node
   uint16_t m_rootPort; // Port of root node (doesn't necessarily have to be true root)
 
+  double latencyDiff = 0;
+
   Address m_parentIp; // Address of parent
   uint16_t m_parentPort; // Port of parent
 
