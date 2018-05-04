@@ -185,6 +185,8 @@ ScdtServer::DoDispose (void)
 void
 ScdtServer::DoSetup (void)
 {
+  m_receiveCntr = 0;
+
   memcpy (&m_rootIp, &m_peerAddress, sizeof (Address));
   m_rootPort = m_peerPort;
 
@@ -280,28 +282,31 @@ ScdtServer::SendData ()
 {
   NS_LOG_INFO("Sending data");
   uint32_t start = 0;
-  uint8_t someFrigginData[] = "RandomData";
-  uint32_t dataSize = 20;
+  //uint8_t someFrigginData[] = "RandomData";
+  uint32_t dataSize = 100;
   uint8_t toSend[dataSize + sizeof (start)];
-  memcpy (toSend, &start, sizeof (start));
-  memcpy (&toSend[sizeof (start)], someFrigginData, dataSize);
 
-  double curTime = Simulator::Now ().GetSeconds();
-  memcpy (&toSend[sizeof (start)], &curTime, sizeof (double));
-
-  uint8_t toSend2[dataSize + sizeof (start)];
+  /*uint8_t toSend2[dataSize + sizeof (start)];
   uint8_t someOtherFrigginData[] = "OtherData1";
   uint32_t start2 = 10;
   memcpy (toSend2, &start2, sizeof (start2));
   memcpy (&toSend2[sizeof (start2)], someOtherFrigginData, dataSize);
-
-  ScdtServer::UpdateCache (toSend, 10 + sizeof (start));
-  //ScdtServer::UpdateCache (toSend2, 10 + sizeof (start2));  
+*/
+  //ScdtServer::UpdateCache (toSend2, 10 + sizeof (start2)); 
+  double curTime = Simulator::Now ().GetSeconds (); 
   for (int i = 0; i < m_numChildren; i++) 
     {
+      start = 0;
       NS_LOG_INFO ("Sending: " << toSend);
-      m_socket->SendTo (toSend, 10 + sizeof (start), 0, m_children[i]);
-      
+      for (int j = 0; j < 100; j++) 
+        {
+          memcpy (toSend, &start, sizeof (start));
+          memcpy (&toSend[sizeof(start)], &curTime, sizeof(double));
+          memset (&toSend[sizeof(start)+sizeof(double)], i, dataSize - sizeof(double));
+          ScdtServer::UpdateCache (toSend, dataSize + sizeof(start));
+          m_socket->SendTo (toSend, dataSize + sizeof (start), 0, m_children[i]);
+          start += 100;
+        }
       //m_socket->SendTo (toSend2, 10 + sizeof (start2), 0, m_children[i]);
     }
 }
@@ -713,7 +718,8 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
           double pktTime;
           memcpy (&pktTime, &contents[sizeof (uint32_t)], sizeof (double));
           double latencyDiff = Simulator::Now ().GetSeconds () - pktTime;
-          m_latencyDiff = latencyDiff;
+          if (++m_receiveCntr == 100) 
+              m_latencyDiff = latencyDiff;
           /*if (m_numChildren == 0) 
             {
               NS_LOG_INFO ("LEAF NODE: At time" << Simulator::Now ().GetSeconds() << "s node " << GetNode()->GetId());
@@ -748,11 +754,11 @@ ScdtServer::UpdateCache (uint8_t* contents, uint32_t size)
   bool wrapped = false;
   const uint32_t NUM_BLOCKS = CACHE_SIZE / BLOCK_SIZE;
   uint8_t cntr = 1;
-  for (uint8_t i = (start_byte / BLOCK_SIZE) - 1;
+  for (uint32_t i = (start_byte / BLOCK_SIZE) - 1;
        i != (start_byte / BLOCK_SIZE) % NUM_BLOCKS;
        i--)
     {
-      if (i == 255) 
+      if (i == 4294967295) 
         {
           i = NUM_BLOCKS - 1;
           wrapped = true;

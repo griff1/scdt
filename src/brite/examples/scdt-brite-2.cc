@@ -28,7 +28,7 @@
 #include <fstream>
 #include <time.h>
 
-#define OVERLAY_NODES 50
+#define OVERLAY_NODES 250
 
 using namespace ns3;
 

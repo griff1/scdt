@@ -29,8 +29,8 @@
 
 #define MAX_FANOUT 1000
 #define MAX_PINGS 100
-#define CACHE_SIZE 1000
-#define BLOCK_SIZE 20
+#define CACHE_SIZE 1000000
+#define BLOCK_SIZE 1000
 
 namespace ns3 {
 
@@ -240,6 +240,8 @@ private:
   uint8_t m_roundNodeCount;
 
   double m_latencyDiff;
+  uint32_t m_receiveCntr;
+
   /// Callbacks for tracing the packet Tx events
   TracedCallback<Ptr<const Packet> > m_txTrace;
 };
