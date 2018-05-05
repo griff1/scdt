@@ -29,8 +29,8 @@
 
 #define MAX_FANOUT 4
 #define MAX_PINGS 100
-#define CACHE_SIZE 1000
-#define BLOCK_SIZE 10
+#define CACHE_SIZE 1000000
+#define BLOCK_SIZE 10000
 
 namespace ns3 {
 
@@ -234,6 +234,8 @@ private:
   Address m_nextPotentialParent;
   double m_nextPotentialParentPing;
   uint8_t m_possibleParentsCntr;
+
+  uint32_t m_pktCntr;
 
   /// Callbacks for tracing the packet Tx events
   TracedCallback<Ptr<const Packet> > m_txTrace;

@@ -185,6 +185,8 @@ ScdtServer::DoSetup (void)
 {
   memcpy (&m_rootIp, &m_peerAddress, sizeof (Address));
   m_rootPort = m_peerPort;
+  
+  m_pktCntr = 0;
 
   m_children = new Address[MAX_FANOUT];
   m_childrenPorts = new uint16_t[MAX_FANOUT];
@@ -255,7 +257,7 @@ ScdtServer::StartApplication (void)
   else 
     {
       //Simulator::Schedule (Seconds (3.5), &ScdtServer::ChangeConfig, this);
-      Simulator::Schedule (Seconds (4), &ScdtServer::SendData, this);
+      Simulator::Schedule (Seconds (100), &ScdtServer::SendData, this);
     }
   //NS_LOG_INFO ("Successfully started application");
 }
@@ -271,38 +273,56 @@ ScdtServer::SendData ()
 {
   //NS_LOG_INFO("Sending data");
   uint32_t start = 0;
-  uint8_t* bin_string = (uint8_t *)&start;
-  uint8_t someFrigginData[15];
+ // uint8_t someFrigginData[15];
   double curTime = Simulator::Now().GetSeconds();
-  uint32_t dataSize = 15;
+  uint32_t dataSize = 10000;
   //NS_LOG_INFO ("bin_string: " << bin_string);
   uint8_t toSend[dataSize + sizeof (start)];
-  memcpy (toSend, bin_string, sizeof (start));
-  memcpy (&toSend[sizeof (start)], someFrigginData, dataSize);
+  //memcpy (&toSend[sizeof (start)], someFrigginData, dataSize);
   
-    memcpy(&toSend[sizeof(start)], &curTime, sizeof(double));
 
   /*uint8_t toSend2[dataSize + sizeof (start)];
   uint8_t someOtherFrigginData[] = "OtherData1";
   uint32_t start2 = 10;
   uint8_t* bin_string2 = (uint8_t *)&start2;
   memcpy (toSend2, bin_string2, sizeof (start));
-  memcpy (&toSend2[sizeof (start)], someOtherFrigginData, dataSize);
-  */for (int i = 0; i < m_numChildren; i++) 
+  memcpy (&toSend2[sizeof (start)], someOtherFrigginData, dataSize);*/
+  memcpy(&toSend[sizeof(start)], &curTime, sizeof(double));
+  memset (&toSend[sizeof(start) + sizeof(double)], 'b', dataSize - sizeof(double));
+  for (int i = 0; i < m_numChildren; i++) 
     {
-      //NS_LOG_INFO ("Sending: " << toSend);
-      ScdtServer::UpdateCache(toSend, 10 + sizeof (start));
-      m_socket->SendTo (toSend, 10 + sizeof (start), 0, m_children[i]);
+      start = 0;
+      for (int j = 0; j < 10; j++) {
+        memcpy(toSend, &start, sizeof(uint32_t));
 
+        ScdtServer::UpdateCache(toSend, dataSize + sizeof (start));
+        m_socket->SendTo (toSend, dataSize + sizeof (start), 0, m_children[i]);
+        start += 10000;
+      }
       //ScdtServer::UpdateCache (toSend2, 10 + sizeof (start));
       
       //m_socket->SendTo (toSend2, 10 + sizeof (start), 0, m_children[i]);
     }
+  for (int i = 0; i < m_numChildren; i++) {
+    m_socket->SendTo (toSend, dataSize + sizeof (start), 0, m_children[i]);
+  }
 }
 
 void 
 ScdtServer::StopApplication ()
 {
+  //NS_LOG_INFO ("pktCntr: " << m_pktCntr);
+     /*NS_LOG_INFO ("Current cache: " << m_cache[1000]);
+          NS_LOG_INFO ("More cache: " << m_cache[11000]);
+          NS_LOG_INFO ("More cache: " << m_cache[21000]);
+          NS_LOG_INFO ("More cache: " << m_cache[31000]);
+          NS_LOG_INFO ("More cache: " << m_cache[41000]);
+          NS_LOG_INFO ("More cache: " << m_cache[51000]);
+          NS_LOG_INFO ("More cache: " << m_cache[61000]);
+          NS_LOG_INFO ("More cache: " << m_cache[71000]);
+          NS_LOG_INFO ("More cache: " << m_cache[81000]);
+          NS_LOG_INFO ("More cache: " << m_cache[91000]);
+*/
     if (!m_isRoot) { 
     std::ofstream file;
         file.open("times.txt", std::fstream::app);
@@ -645,25 +665,27 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
       // Forward packet to all children
       //NS_LOG_INFO ("Received packet to forward with contents: " << contents);
       // Drops 10% of packets
-      /*if (rand () % 10 == 0) 
+      uint32_t val = rand();
+      if (val % 100 == 0 || val % 100 == 1 || val % 100 == 2) 
       //if (contents[4] == 'R')
         {
-          NS_LOG_INFO ("Simulated packet drop");
+       //   NS_LOG_INFO ("Simulated packet drop");
         }
       else 
-        {*/
+        {
 
         double curTime = Simulator::Now().GetSeconds();
         double oldTime;
-        memcpy(&oldTime, &contents[sizeof(uint32_t)], sizeof(double));
-        latencyDiff = curTime - oldTime;
-        
-          ScdtServer::UpdateCache (contents, size);
+        ScdtServer::UpdateCache (contents, size);
+        if (m_pktCntr == 10) {
+          memcpy(&oldTime, &contents[sizeof(uint32_t)], sizeof(double));
+          latencyDiff = curTime - oldTime;
+        }
           for (int i = 0; i < m_numChildren; i++) 
             {
               m_socket->SendTo(contents, size, 0, m_children[i]);
             }
-        //}
+        }
     }
 }
 
@@ -676,9 +698,18 @@ ScdtServer::UpdateCache (uint8_t* contents, uint32_t size)
   start_byte = start_byte - (start_byte % BLOCK_SIZE);
   uint32_t orig_start_byte = start_byte;
   start_byte = start_byte % CACHE_SIZE;
-  uint32_t num_blocks = (size - sizeof (start_byte)) / BLOCK_SIZE + 1;
+  uint32_t num_blocks = (size - sizeof (start_byte)) / BLOCK_SIZE;
+  if (num_blocks == 0) 
+    {
+      num_blocks = 1;
+    }
   // TODO: Fix allocation across cache wraparound
   memcpy (&m_cache[start_byte], &contents[sizeof (start_byte)], size - sizeof (start_byte));
+  
+  if (m_cacheStarts[(start_byte / BLOCK_SIZE)] == -1) 
+    {
+      m_pktCntr++;
+    }
   for (uint8_t i = 0; i < num_blocks; i++) 
     {
       m_cacheStarts[(start_byte / BLOCK_SIZE) + i] = (int64_t) (orig_start_byte + (BLOCK_SIZE * i));
@@ -694,11 +725,11 @@ ScdtServer::UpdateCache (uint8_t* contents, uint32_t size)
   bool wrapped = false; 
   const uint32_t NUM_BLOCKS = CACHE_SIZE / BLOCK_SIZE;
   uint8_t cntr = 1;
-  for (uint8_t i = (start_byte / BLOCK_SIZE) - 1; 
+  for (uint32_t i = (start_byte / BLOCK_SIZE) - 1; 
        i != (start_byte / BLOCK_SIZE) % NUM_BLOCKS; 
        i--) 
     {
-      if (i == 255) 
+      if (i == 4294967295) 
         {
           i = NUM_BLOCKS - 1;
           wrapped = true;
@@ -707,7 +738,6 @@ ScdtServer::UpdateCache (uint8_t* contents, uint32_t size)
           (m_cacheStarts[i] != m_cacheStarts [i + 1] - BLOCK_SIZE && m_cacheStarts[i] != -1)) 
         {
           //NS_LOG_INFO ("Sent NACK: ");
-          //NS_LOG_INFO ("Current cache: " << m_cache);
           uint8_t toSend[4 + sizeof(uint32_t)];
           memcpy (toSend, NACK, 4);
           uint32_t byteToReq = orig_start_byte - (cntr * BLOCK_SIZE);
