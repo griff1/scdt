@@ -81,6 +81,7 @@ public:
 
   void SetSockets ();
 
+  double endTime = 0;
   double latencyDiff;
   
   void InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* contents, uint32_t size);

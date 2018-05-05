@@ -38,6 +38,7 @@
 #include <fstream>
 
 #define SENDTCPTIME 300 
+#define PACKSIZE 100
 
 namespace ns3 {
 
@@ -285,12 +286,7 @@ ScdtServer::HandleTcpRead(Ptr<Socket> socket)
     Address from;
     Ptr<Packet> packet = socket->RecvFrom(from);
     //std::cout << "Handling read";
-    double curTime = Simulator::Now ().GetSeconds();
-       double oldTime;
-       uint8_t buf[15];
-        packet->CopyData(buf, sizeof(double));
-        memcpy(&oldTime, buf, sizeof(double));
-                       latencyDiff = curTime - oldTime;
+    endTime = Simulator::Now ().GetSeconds();
     ScdtServer::SendData(packet);
 }
 
@@ -350,15 +346,17 @@ ScdtServer::SetSockets() {
 void
 ScdtServer::rootSendData () 
 {
-    uint8_t buf[15];
+    uint8_t buf[PACKSIZE];
     double curTime = Simulator::Now().GetSeconds();
     memcpy(buf, &curTime, sizeof(double));
-    Ptr<Packet> packet = Create<Packet> (buf, sizeof(double));
+    Ptr<Packet> packet = Create<Packet> (buf, PACKSIZE);
     
     
   for (int i = 0; i < m_numChildren; i++) {
     //NS_LOG_INFO("Starting up TCP streams");
+    for (int j = 0; j < 1000; j++) {
      ScdtServer::SendTcp(m_childrenSockets[i], packet);
+    }
     }
 }
 
@@ -371,7 +369,7 @@ ScdtServer::StopApplication ()
         
         std::ofstream file;
         file.open("times.txt", std::fstream::app);
-        file << latencyDiff << "\n";
+        file << endTime << "\n";
         file.close();
     if (latencyDiff == 0) {
         NS_LOG_INFO ("Node " << GetNode ()->GetId () << ": curAddress: " << GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal() << " NO PACKET");
@@ -823,7 +821,8 @@ ScdtServer::SerializeChildren ()
 void
 ScdtServer::SendTcp(Ptr<Socket> socket, Ptr<Packet> p) 
 {
-  socket->Send (p);
+  
+      socket->Send (p);
   //NS_LOG_INFO("Bytes sent: " << actual);
 }
 
@@ -840,7 +839,7 @@ void ScdtServer::ConnectionFailed (Ptr<Socket> socket)
 
 void ScdtServer::DataSend (Ptr<Socket> socket, uint32_t)
 {
-    //std::cout << "Data send";
+
     
 }
 
