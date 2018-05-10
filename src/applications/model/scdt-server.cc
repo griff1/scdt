@@ -34,7 +34,7 @@
 #include "ns3/ipv4.h"
 #include <unistd.h>
 
-#define MAX_STRETCH 2
+#define MAX_STRETCH 1
 
 namespace ns3 {
 
@@ -297,8 +297,8 @@ ScdtServer::SendData ()
   for (int i = 0; i < m_numChildren; i++) 
     {
       start = 0;
-      NS_LOG_INFO ("Sending: " << toSend);
-      for (int j = 0; j < 100; j++) 
+      //NS_LOG_INFO ("Sending: " << toSend);
+      for (int j = 0; j < 1; j++) 
         {
           memcpy (toSend, &start, sizeof (start));
           memcpy (&toSend[sizeof(start)], &curTime, sizeof(double));
@@ -559,6 +559,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
   // Handle attach request
   if (memcmp (contents, ATTACH, 7) == 0) 
     {
+      //NS_LOG_INFO ("Received attach at " << GetNode ()->GetId());
       //ScdtServer::SendPing (socket, from);
       memcpy (&m_children[m_numChildren++], &from, sizeof (Address));
     }
@@ -616,7 +617,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
               break;
             }
         }
-      if (m_roundNodeCount == 0 && from != m_rootIp && m_possibleParentsStk.size() != 0) 
+      if (m_roundNodeCount == 0 && from != m_rootIp &&  m_possibleParentsStk.size() != 0) 
         {
           Address bestAddr;
           memcpy (&bestAddr, &m_parentIp, sizeof (Address));
@@ -651,17 +652,19 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
   else if (memcmp (contents, TRY_RESP, 3) == 0)
     {
       m_depth++;
-      // uint8_t numEntries = contents[3];
+      uint8_t numEntries = contents[3];
       //NS_LOG_INFO ("handling try");
       uint32_t cntr = 4;
       m_roundNodeCount = 0;
 
-      if (size == 4) 
+      
+
+      if (size == 4 || numEntries == 0 || MAX_STRETCH == 1) 
         {
           memcpy(&m_parentIp, &from, sizeof (Address));
           m_socket->SendTo (ATTACH, 7, 0, from);
         }
-      while (cntr < size) 
+      while (cntr < size && MAX_STRETCH != 1) 
         {
           uint8_t childSize = contents[cntr + 1];
           Address curAddr;
@@ -718,7 +721,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
           double pktTime;
           memcpy (&pktTime, &contents[sizeof (uint32_t)], sizeof (double));
           double latencyDiff = Simulator::Now ().GetSeconds () - pktTime;
-          if (++m_receiveCntr == 100) 
+          if (++m_receiveCntr == 1) 
               m_latencyDiff = latencyDiff;
           /*if (m_numChildren == 0) 
             {
