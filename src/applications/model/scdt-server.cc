@@ -257,7 +257,7 @@ ScdtServer::StartApplication (void)
   else 
     {
       //Simulator::Schedule (Seconds (3.5), &ScdtServer::ChangeConfig, this);
-      Simulator::Schedule (Seconds (100), &ScdtServer::SendData, this);
+      Simulator::Schedule (Seconds (300), &ScdtServer::SendData, this);
     }
   //NS_LOG_INFO ("Successfully started application");
 }
@@ -275,7 +275,7 @@ ScdtServer::SendData ()
   uint32_t start = 0;
  // uint8_t someFrigginData[15];
   double curTime = Simulator::Now().GetSeconds();
-  uint32_t dataSize = 10000;
+  uint32_t dataSize = 100;
   //NS_LOG_INFO ("bin_string: " << bin_string);
   uint8_t toSend[dataSize + sizeof (start)];
   //memcpy (&toSend[sizeof (start)], someFrigginData, dataSize);
@@ -292,12 +292,12 @@ ScdtServer::SendData ()
   for (int i = 0; i < m_numChildren; i++) 
     {
       start = 0;
-      for (int j = 0; j < 10; j++) {
+      for (int j = 0; j < 100; j++) {
         memcpy(toSend, &start, sizeof(uint32_t));
 
         ScdtServer::UpdateCache(toSend, dataSize + sizeof (start));
         m_socket->SendTo (toSend, dataSize + sizeof (start), 0, m_children[i]);
-        start += 10000;
+        start += 100;
       }
       //ScdtServer::UpdateCache (toSend2, 10 + sizeof (start));
       
@@ -665,7 +665,8 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
       // Forward packet to all children
       //NS_LOG_INFO ("Received packet to forward with contents: " << contents);
       // Drops 10% of packets
-      uint32_t val = rand();
+//      uint32_t val = rand();
+      uint32_t val = 5;
       if (val % 100 == 0 || val % 100 == 1 || val % 100 == 2) 
       //if (contents[4] == 'R')
         {
@@ -677,7 +678,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
         double curTime = Simulator::Now().GetSeconds();
         double oldTime;
         ScdtServer::UpdateCache (contents, size);
-        if (m_pktCntr == 10) {
+        if (m_pktCntr == 100) {
           memcpy(&oldTime, &contents[sizeof(uint32_t)], sizeof(double));
           latencyDiff = curTime - oldTime;
         }
