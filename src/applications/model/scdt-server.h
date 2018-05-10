@@ -27,7 +27,7 @@
 #include <stack>
 #include <set>
 
-#define MAX_FANOUT 2
+#define MAX_FANOUT 4
 #define MAX_PINGS 100
 
 namespace ns3 {
