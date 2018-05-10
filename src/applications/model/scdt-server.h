@@ -28,7 +28,7 @@
 #include <stack>
 
 #define MAX_FANOUT 4
-#define MAX_PINGS 100
+#define MAX_PINGS 1000
 #define CACHE_SIZE 1000000
 #define BLOCK_SIZE 10000
 

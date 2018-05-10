@@ -28,7 +28,7 @@
 #include <fstream>
 #include <time.h>
 
-#define OVERLAY_NODES 50 
+#define OVERLAY_NODES 100 
 
 using namespace ns3;
 
@@ -155,9 +155,13 @@ main (int argc, char *argv[])
   ApplicationContainer generalAppContainer = scdtServerHelper.Install(overlayContainer);
 
   rootAppContainer.Start (Seconds (1.0));
-  rootAppContainer.Stop (Seconds (500.0));
-  generalAppContainer.Start (Seconds (1.0));
-  generalAppContainer.Stop (Seconds (500.0));
+  rootAppContainer.Stop (Seconds (1000.0));
+  for (uint32_t i = 0; i < generalAppContainer.GetN (); i++) 
+    {
+      generalAppContainer.Get (i)->SetStartTime (Seconds (i * 2));
+    }
+  //generalAppContainer.Start (Seconds (1.0));
+  generalAppContainer.Stop (Seconds (1000.0));
 
   if (!nix)
     {

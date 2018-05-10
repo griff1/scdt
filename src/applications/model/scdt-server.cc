@@ -41,6 +41,7 @@ const uint8_t PING_RESP[] = "PINGRESPONSE";
 const uint8_t TRY_RESP[] = "TRY";
 const uint8_t ATTACH_SUC[] = "SUCCESSATTACH";
 const uint8_t NACK[] = "NACK";
+const uint8_t REATTACH[] = "REATTACH";
 
 double latencyDiff = 0;
 
@@ -614,6 +615,14 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
             }
         }
     }
+  else if (memcmp (contents, REATTACH, 8) == 0) 
+    {
+      //NS_LOG_INFO ("Received REATTACH " << GetNode ()->GetId());
+      m_parentIp = m_rootIp;
+      m_parentPort = m_rootPort;
+      ScdtServer::DoSetup ();
+      m_socket->SendTo (ATTACH, 7, 0, InetSocketAddress (Ipv4Address::ConvertFrom (m_rootIp), m_rootPort));
+    }
   // Handle addresses of additional attach points to try
   else if (memcmp (contents, TRY_RESP, 3) == 0)
     {
@@ -639,6 +648,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
   else if (memcmp (contents, ATTACH_SUC, 14) == 0) 
     {
       memcpy(&m_parentIp, &from, sizeof (Address));
+      //NS_LOG_INFO ("Received ATTACH_SUC  on node " << GetNode ()->GetId());
     }
   else if (memcmp (contents, NACK, 4) == 0) 
     {
@@ -665,7 +675,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
       // Forward packet to all children
       //NS_LOG_INFO ("Received packet to forward with contents: " << contents);
       // Drops 10% of packets
-      uint32_t val = rand();
+      /*uint32_t val = rand();
       if (val % 100 == 0 || val % 100 == 1 || val % 100 == 2) 
       //if (contents[4] == 'R')
         {
@@ -673,7 +683,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
         }
       else 
         {
-
+*/
         double curTime = Simulator::Now().GetSeconds();
         double oldTime;
         ScdtServer::UpdateCache (contents, size);
@@ -685,7 +695,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
             {
               m_socket->SendTo(contents, size, 0, m_children[i]);
             }
-        }
+        //}
     }
 }
 
@@ -819,12 +829,14 @@ ScdtServer::UpdateChildren (Address & addr, double pingTime)
           maxPingIndex = i;
         }
     }
-  if (pingTime < maxPingTime) 
+  if (pingTime < maxPingTime - (maxPingTime / 10)) 
     {
       Address oldAddr;
       memcpy (&oldAddr, &m_children[maxPingIndex], sizeof(Address));
       memcpy (&m_children[maxPingIndex], &addr, sizeof (Address));
       m_shortestPing[maxPingIndex] = pingTime;
+
+      m_socket->SendTo (REATTACH, 8, 0, oldAddr);
 
       m_socket->SendTo (ATTACH_SUC, 14, 0, addr);
       ScdtServer::SerializeChildren ();
