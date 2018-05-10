@@ -276,7 +276,7 @@ ScdtServer::SendData ()
   uint32_t start = 0;
  // uint8_t someFrigginData[15];
   double curTime = Simulator::Now().GetSeconds();
-  uint32_t dataSize = 10000;
+  uint32_t dataSize = 100;
   //NS_LOG_INFO ("bin_string: " << bin_string);
   uint8_t toSend[dataSize + sizeof (start)];
   //memcpy (&toSend[sizeof (start)], someFrigginData, dataSize);
@@ -293,12 +293,12 @@ ScdtServer::SendData ()
   for (int i = 0; i < m_numChildren; i++) 
     {
       start = 0;
-      for (int j = 0; j < 10; j++) {
+      for (int j = 0; j < 100; j++) {
         memcpy(toSend, &start, sizeof(uint32_t));
 
         ScdtServer::UpdateCache(toSend, dataSize + sizeof (start));
         m_socket->SendTo (toSend, dataSize + sizeof (start), 0, m_children[i]);
-        start += 10000;
+        start += 100;
       }
       //ScdtServer::UpdateCache (toSend2, 10 + sizeof (start));
       
@@ -611,6 +611,7 @@ ScdtServer::InterpretPacket (Ptr<Socket> socket, Address & from, uint8_t* conten
                   m_nextPotentialParentPing = 999999;
                   socket->SendTo (ATTACH, 7, 0, m_nextPotentialParent);
                 }
+              memset (&m_pings[i], 0, sizeof(Address));
               break;
             }
         }
@@ -829,7 +830,7 @@ ScdtServer::UpdateChildren (Address & addr, double pingTime)
           maxPingIndex = i;
         }
     }
-  if (pingTime < maxPingTime - (maxPingTime / 10)) 
+  if (pingTime < maxPingTime) 
     {
       Address oldAddr;
       memcpy (&oldAddr, &m_children[maxPingIndex], sizeof(Address));
